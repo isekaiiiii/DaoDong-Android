@@ -1,0 +1,17 @@
+CAP NHAT DAO DONG LEN REPOSITORY CU
+
+1. Tai DaoDong_Android_v2.0_source.zip vao thu muc Download cua dien thoai.
+2. Mo Termux, chay:
+
+cd ~/storage/downloads/DynamicIslandAndroid
+unzip -o ~/storage/downloads/DaoDong_Android_v2.0_source.zip
+git add -A
+git commit -m "Upgrade Dao Dong v2.0"
+git push origin main
+
+3. Mo GitHub > Actions, chon lan chay moi nhat.
+4. Khi xanh thanh cong, tai artifact Dao-dong-Android-APK-v2.
+5. Giai nen artifact va cai app-debug.apk.
+
+Neu git commit bao "nothing to commit", kiem tra git status. Neu push yeu cau Username/Password,
+nhap username GitHub va Personal Access Token (khong dung mat khau tai khoan GitHub).

@@ -1,72 +1,79 @@
-# Đảo động — Dynamic Island cho Android
+# Đảo động Android — phiên bản 2.0
 
-Ứng dụng tạo một vùng nổi kiểu Dynamic Island trên Android. Giao diện và phần cài đặt đã được Việt hóa; thiết kế tối màu, bo góc và có bốn màu điểm nhấn.
+Ứng dụng Android tạo lớp phủ nổi phong cách Dynamic Island. Dự án dùng Java, không phải ứng dụng iOS hay Dynamic Island chính thức của Apple.
 
-## Tính năng trong bản 1.1
+## Tính năng v2.0
 
-- Bật/tắt đảo động bằng nút trong ứng dụng.
-- Kéo đảo động trực tiếp theo chiều ngang và dọc; vị trí được lưu lại.
-- Chỉnh chiều rộng, chiều cao, vị trí ngang, vị trí dọc và độ bo góc.
-- Căn đảo động về vị trí mặc định.
-- Chọn màu tím, xanh dương, xanh lá hoặc hồng.
-- Chạm để mở rộng/thu gọn bảng thông tin.
-- Hiển thị pin và trạng thái sạc.
-- Hiển thị tốc độ tải xuống gần đúng từ số liệu lưu lượng mạng Android.
-- Hiển thị tiêu đề và nội dung thông báo mới sau khi người dùng cấp quyền truy cập thông báo.
-- Nhận thông tin phiên phát nhạc Android; hỗ trợ bài trước, phát/tạm dừng và bài tiếp khi ứng dụng phát nhạc cho phép.
-- Bộ đếm ngược tối đa 1.440 phút, cập nhật mỗi giây trên đảo động.
-- Nút chạy thử hoạt ảnh 5 giây.
-- Dịch vụ nền có thông báo thường trực để Android hiển thị trạng thái ứng dụng đang chạy.
+- Giao diện cài đặt tiếng Việt, nền tối và các thẻ điều khiển mới.
+- Điều chỉnh chiều rộng 150–380 dp; chiều cao thu gọn 38–160 dp; chiều cao bảng mở rộng 130–480 dp.
+- Tinh chỉnh vị trí ngang/dọc, độ bo góc và độ dày viền.
+- Tùy chỉnh riêng màu nhấn, nền đảo, chữ, nền bảng mở rộng và màu viền bằng mã HEX; có bộ màu mẫu.
+- Đọc tên và biểu tượng ứng dụng gửi thông báo; chọn icon nằm bên trái hoặc bên phải.
+- Tên ứng dụng hiển thị có thể dùng tên app tự nhận hoặc tên tùy chỉnh.
+- Chọn ảnh từ điện thoại để dùng làm icon tùy chỉnh cho thông báo; có thể khôi phục icon ứng dụng gốc.
+- Nếu thông báo của ứng dụng nguồn cung cấp RemoteInput, hiển thị ô nhập và nút **Trả lời**; có nút **Bỏ qua** để đóng thông báo.
+- Điều khiển phiên phát nhạc Android: bài trước, phát/tạm dừng, bài tiếp.
+- Hiển thị pin, trạng thái sạc, tốc độ tải xuống ước tính và bộ đếm ngược.
+- Foreground service có thông báo thường trực; `START_STICKY` để Android có thể khởi động lại service sau khi thu hồi tiến trình.
+- Tùy chọn tự khởi động khi máy khởi động hoặc khi app được cập nhật (nếu Android/OEM cho phép).
+- Mặc định tắt kéo trực tiếp ở lớp phủ. Người dùng có thể bật kéo trong cài đặt; vị trí vẫn có thể chỉnh bằng thanh trượt.
 
-## Yêu cầu
+## Quyền được khai báo
 
-- Android 8.0 trở lên (API 26+).
-- Quyền hiển thị trên ứng dụng khác để tạo cửa sổ nổi.
-- Quyền truy cập thông báo là tùy chọn, cần bật để đọc thông báo và điều khiển phiên nhạc.
+- `SYSTEM_ALERT_WINDOW`: hiển thị lớp phủ nổi.
+- Notification access: đọc thông báo, tên gói ứng dụng, icon và gửi thao tác trả lời/đóng thông báo được hỗ trợ.
+- `POST_NOTIFICATIONS`: hiển thị thông báo dịch vụ nền trên Android 13+.
+- `FOREGROUND_SERVICE` và `FOREGROUND_SERVICE_SPECIAL_USE`: giữ dịch vụ hiển thị cho người dùng.
+- `RECEIVE_BOOT_COMPLETED`: thử khôi phục sau khi khởi động lại.
+- `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`: mở yêu cầu loại ứng dụng khỏi tối ưu pin.
+- `QUERY_ALL_PACKAGES`: đọc tên/icon các ứng dụng gửi thông báo trên thiết bị Android 11+.
 
-## Cài đặt trên điện thoại
+**Riêng tư:** danh sách ứng dụng và nội dung thông báo được xử lý trên thiết bị; dự án không gửi dữ liệu đến máy chủ. Quyền truy cập thông báo có thể cho ứng dụng thấy nội dung riêng tư. Chỉ cấp quyền nếu bạn đồng ý.
 
-1. Cài APK đã build.
-2. Mở ứng dụng **Đảo động**.
-3. Nhấn **Cấp quyền** ở mục hiển thị trên ứng dụng khác và bật quyền cho Đảo động.
-4. Muốn hiển thị thông báo và điều khiển nhạc, nhấn **Cấp quyền** ở mục truy cập thông báo rồi bật Đảo động trong danh sách.
-5. Trở lại ứng dụng, nhấn **Bật Đảo động**.
-6. Dùng thanh trượt để chỉnh vị trí/kích thước hoặc kéo trực tiếp vùng nổi.
+## Cài đặt
 
-Trên một số máy Samsung/Xiaomi/Oppo, hãy đặt mức sử dụng pin của ứng dụng thành **Không hạn chế** nếu hệ thống tự dừng dịch vụ nền.
+1. Cài APK.
+2. Mở Đảo động và cấp quyền **Hiển thị trên ứng dụng khác**.
+3. Bật **Truy cập thông báo** trong cài đặt Android để nhận thông báo, icon ứng dụng và điều khiển nhạc.
+4. Cho phép thông báo của ứng dụng nếu Android 13+ hỏi.
+5. Bật đảo động trong ứng dụng.
+6. Trong ứng dụng, mở phần **Chế độ nền & thao tác**, bật tự khởi động nếu cần.
+7. Trên Samsung/Xiaomi/Oppo, mở cài đặt Pin của Android và chọn chế độ **Không hạn chế** hoặc cho phép hoạt động nền nếu có.
 
-## Tạo APK bằng GitHub Actions (có thể thao tác bằng trình duyệt điện thoại)
+## Trả lời thông báo
 
-1. Giải nén toàn bộ thư mục dự án và tải các tệp bên trong lên một repository GitHub mới. Giữ nguyên thư mục `.github/workflows`.
-2. Mở repository, chọn tab **Actions**.
-3. Chọn workflow **Build Android APK** rồi nhấn **Run workflow** (hoặc đẩy mã lên nhánh `main` để workflow tự chạy).
-4. Khi workflow hoàn tất, mở lần chạy mới nhất.
-5. Ở phần **Artifacts**, tải `Dao-dong-Android-APK` và giải nén để lấy `app-debug.apk`.
+Nút Trả lời chỉ xuất hiện nếu ứng dụng nguồn cung cấp hành động trả lời bằng `RemoteInput`. Không phải ứng dụng nào cũng hỗ trợ trả lời nhanh từ thông báo. Nút Bỏ qua gọi API của Android để hủy thông báo đang hiển thị.
 
-APK debug là bản cài thử. Muốn phát hành rộng rãi cần tạo khóa ký riêng và build bản release đã ký.
+## Chạy nền và giới hạn 24/7
+
+Ứng dụng dùng foreground service, thông báo thường trực, `START_STICKY` và receiver khởi động lại. Tuy vậy, không thể đảm bảo chạy tuyệt đối 24/7: người dùng có thể buộc dừng ứng dụng, Android/OEM có thể giới hạn nền, tối ưu pin, giới hạn khởi chạy sau khởi động hoặc thu hồi quyền lớp phủ. Không có cách hợp lệ để vượt qua các kiểm soát hệ thống này. Hãy bật Không hạn chế pin nếu muốn tăng độ ổn định.
+
+## Lưu ý quyền xem danh sách ứng dụng
+
+`QUERY_ALL_PACKAGES` là quyền truy vấn danh sách ứng dụng được khai báo trong manifest, không phải hộp thoại cấp quyền runtime thông thường. Google Play hạn chế quyền này và có thể yêu cầu khai báo/đánh giá; bản build sideload dùng riêng có thể cài trực tiếp. Nếu phát hành qua Play, phải xem xét chính sách hiện hành và chỉ giữ quyền khi chức năng cốt lõi đủ điều kiện.
+
+## Build APK bằng GitHub Actions
+
+1. Đẩy toàn bộ nội dung thư mục dự án này lên repository GitHub, giữ `.github/workflows/build-apk.yml`.
+2. Mở tab **Actions** và chọn **Tạo tệp APK Android**.
+3. Nhấn **Run workflow** hoặc push commit lên nhánh `main`.
+4. Khi workflow hoàn tất, mở lần chạy mới nhất và tải artifact `Dao-dong-Android-APK-v2`.
+5. Giải nén file ZIP để lấy `app-debug.apk`.
 
 ## Build bằng Android Studio
 
-- Mở thư mục `DynamicIslandAndroid` bằng Android Studio.
-- Cài Android SDK Platform 35 nếu Android Studio yêu cầu.
+- Mở thư mục gốc `DynamicIslandAndroid`.
+- Cài JDK 17 và Android SDK Platform 35.
+- Chạy Gradle sync.
 - Chọn **Build → Build Bundle(s) / APK(s) → Build APK(s)**.
-- APK debug nằm ở `app/build/outputs/apk/debug/app-debug.apk`.
+- APK debug thường nằm tại `app/build/outputs/apk/debug/app-debug.apk`.
 
-## Giới hạn kỹ thuật
+## Thông số
 
-- Đây là ứng dụng Android độc lập mô phỏng kiểu hiển thị Dynamic Island, không phải tính năng Dynamic Island gốc của Apple.
-- Nội dung thông báo phụ thuộc thông tin mà ứng dụng nguồn cung cấp. Cuộc gọi, bản đồ, giao hàng hoặc hoạt động trực tiếp chỉ hiện được khi hệ thống/ứng dụng liên quan gửi thông báo hoặc phiên hoạt động tương thích.
-- Không thể đọc dữ liệu riêng bên trong mọi ứng dụng; không thể tự lấy tỷ số, thông tin giao hàng hoặc chỉ đường nếu ứng dụng nguồn không cung cấp.
-- Android không cho ứng dụng thông thường biết và điều khiển quy trình Face ID của hệ thống; hoạt ảnh Face ID thật không được hỗ trợ.
-- Tốc độ mạng là ước tính từ bộ đếm lưu lượng tải xuống, không phải phép đo tốc độ Internet chuẩn.
-- Việc chạy nền và mức tiêu thụ pin phụ thuộc phiên bản Android và chính sách quản lý pin của nhà sản xuất.
-- Quyền truy cập thông báo có thể để ứng dụng đọc nội dung thông báo. Hãy chỉ bật nếu bạn đồng ý. Bản này không có mã gửi thông báo lên máy chủ.
-
-## Cấu hình dự án
-
-- Ngôn ngữ: Java
-- Android Gradle Plugin: 8.7.3
-- Gradle: 8.9 (trong workflow)
-- Compile SDK / Target SDK: 35
-- Minimum SDK: 26
-- Phiên bản ứng dụng: 1.1
+- Java
+- Minimum SDK 26 (Android 8.0)
+- Compile/Target SDK 35
+- Android Gradle Plugin 8.7.3
+- Gradle 8.9 trong GitHub Actions
+- Package: `com.example.dynamicisland`
+- Version: 2.0 (versionCode 3)
