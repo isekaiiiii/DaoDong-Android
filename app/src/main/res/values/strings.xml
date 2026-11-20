@@ -3,4 +3,5 @@
     <string name="app_name">Ayane</string>
     <string name="accessibility_service_description">Cho phép Ayane nhận biết ứng dụng đang hiển thị và trạng thái khóa máy để điều chỉnh đảo động. Dịch vụ không đọc văn bản hoặc cây giao diện của cửa sổ.</string>
     <string name="accessibility_service_title">Dịch vụ trợ năng Ayane</string>
+    <string name="ayane_accessibility_description">Cho phép Ayane nhận biết ứng dụng đang hiển thị và trạng thái khóa máy để điều chỉnh đảo động. Dịch vụ không đọc văn bản hoặc cây giao diện của cửa sổ.</string>
 </resources>
