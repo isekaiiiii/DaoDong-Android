@@ -33,6 +33,9 @@ jobs:
       - name: Cap quyen Gradle Wrapper
         run: chmod +x ./gradlew
 
+      - name: Kiem tra Android resources
+        run: python3 scripts/check_android_resources.py
+
       - name: Bien dich APK
         run: ./gradlew --no-daemon --stacktrace clean assembleDebug
 

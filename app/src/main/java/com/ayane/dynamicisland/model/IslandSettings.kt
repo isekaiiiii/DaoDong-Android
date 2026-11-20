@@ -53,7 +53,7 @@ data class IslandSettings(
     val showInLandscape: Boolean = false,
     val animationSpeed: Float = 0.7f,
     val blockedPackages: Set<String> = emptySet(),
-    val restartOnBoot: Boolean = true,
+    val restartOnBoot: Boolean = false,
     val bubbleEffectEnabled: Boolean = true,
     val dismissMediaOnPause: Boolean = false,
     val alwaysShowPill: Boolean = false,

@@ -202,7 +202,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -218,14 +217,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import com.ayane.dynamicisland.model.IslandSettings
 import com.ayane.dynamicisland.service.IslandOverlayService
 import kotlinx.coroutines.launch
@@ -362,7 +358,6 @@ fun MainScreen(
 ) {
     val context = LocalContext.current
     val view = LocalView.current
-    val lifecycleOwner = LocalLifecycleOwner.current
 
     val settings by viewModel.settings.collectAsState()
     val pendingPermissions by viewModel.pendingPermissions.collectAsState()
@@ -395,22 +390,6 @@ fun MainScreen(
         if (uri != null) {
             attachmentUri = uri
             attachmentName = getAttachmentFileName(context, uri)
-        }
-    }
-
-    // Re-check permissions on every onResume
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                // Refresh permission state when returning from Android settings.
-                // Do not auto-start the overlay while the launcher UI is resuming.
-                viewModel.checkPermissions(context)
-                viewModel.refreshUpdateStateOnResume(context)
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 

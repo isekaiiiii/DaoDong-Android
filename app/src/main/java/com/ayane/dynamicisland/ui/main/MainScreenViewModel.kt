@@ -6,6 +6,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.widget.Toast
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ayane.dynamicisland.data.SettingsRepository
@@ -116,7 +117,12 @@ class MainScreenViewModel(private val repository: SettingsRepository) : ViewMode
     }
 
     fun checkPermissions(context: Context) {
-        _pendingPermissions.value = PermissionHelper.getPendingPermissions(context)
+        _pendingPermissions.value = try {
+            PermissionHelper.getPendingPermissions(context)
+        } catch (error: Exception) {
+            Log.e("AyaneStartup", "Không thể kiểm tra quyền lúc mở ứng dụng", error)
+            emptyList()
+        }
     }
 
     fun updateSettings(update: (IslandSettings) -> IslandSettings) {

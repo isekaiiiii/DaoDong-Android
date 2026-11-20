@@ -16,6 +16,7 @@ import com.ayane.dynamicisland.theme.AyaneTheme
 import com.ayane.dynamicisland.ui.main.MainScreen
 import com.ayane.dynamicisland.ui.main.MainScreenViewModel
 import android.content.Intent
+import android.util.Log
 class MainActivity : ComponentActivity() {
 
     private val viewModel by viewModels<MainScreenViewModel>(
@@ -31,11 +32,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        runCatching { enableEdgeToEdge() }
+            .onFailure { Log.e("AyaneStartup", "Không thể bật chế độ edge-to-edge; tiếp tục mở giao diện", it) }
 
         // Keep the launcher screen independent from overlay/foreground-service startup.
         // The user starts the island explicitly with the in-app switch after granting permissions.
-        viewModel.checkPermissions(this)
         if (intent.getBooleanExtra("EXTRA_SHOW_UPDATE", false)) {
             viewModel.checkForUpdates(this)
         }
@@ -65,7 +66,9 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         // Keep the launcher screen independent from overlay/foreground-service startup.
         // The user starts the island explicitly with the in-app switch after granting permissions.
-        viewModel.checkPermissions(this)
-        viewModel.refreshUpdateStateOnResume(this)
+        runCatching { viewModel.checkPermissions(this) }
+            .onFailure { Log.e("AyaneStartup", "Permission refresh failed", it) }
+        runCatching { viewModel.refreshUpdateStateOnResume(this) }
+            .onFailure { Log.e("AyaneStartup", "Update state refresh failed", it) }
     }
 }

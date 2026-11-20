@@ -9,13 +9,20 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import android.util.Log
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
+import androidx.datastore.preferences.core.emptyPreferences
+import kotlinx.coroutines.flow.catch
 import com.ayane.dynamicisland.model.IslandSettings
 import com.ayane.dynamicisland.model.DEFAULT_FEATURE_PRIORITIES
 import com.ayane.dynamicisland.model.DEFAULT_MEDIA_LAYERS
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-private val Context.dataStore by preferencesDataStore(name = "island_settings")
+private val Context.dataStore by preferencesDataStore(
+    name = "island_settings",
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() }
+)
 
 class SettingsRepository(private val context: Context) {
 
@@ -104,7 +111,7 @@ class SettingsRepository(private val context: Context) {
         }
 
         IslandSettings(
-            isEnabled = preferences[PreferencesKeys.IS_ENABLED] ?: true,
+            isEnabled = preferences[PreferencesKeys.IS_ENABLED] ?: false,
             widthDp = preferences[PreferencesKeys.WIDTH_DP] ?: 180,
             heightDp = preferences[PreferencesKeys.HEIGHT_DP] ?: 36,
             cornerRadiusDp = preferences[PreferencesKeys.CORNER_RADIUS_DP] ?: 22,
@@ -130,7 +137,7 @@ class SettingsRepository(private val context: Context) {
             showInLandscape = preferences[PreferencesKeys.SHOW_IN_LANDSCAPE] ?: false,
             animationSpeed = resolvedSpeed,
             blockedPackages = preferences[PreferencesKeys.BLOCKED_PACKAGES] ?: emptySet(),
-            restartOnBoot = preferences[PreferencesKeys.RESTART_ON_BOOT] ?: true,
+            restartOnBoot = preferences[PreferencesKeys.RESTART_ON_BOOT] ?: false,
             bubbleEffectEnabled = preferences[PreferencesKeys.BUBBLE_EFFECT_ENABLED] ?: true,
             dismissMediaOnPause = preferences[PreferencesKeys.DISMISS_MEDIA_ON_PAUSE] ?: false,
             alwaysShowPill = preferences[PreferencesKeys.ALWAYS_SHOW_PILL] ?: false,
@@ -195,185 +202,193 @@ class SettingsRepository(private val context: Context) {
             droidbarYOffsetDp = preferences[PreferencesKeys.DROIDBAR_Y_OFFSET_DP] ?: 0,
             droidbarHapticsEnabled = preferences[PreferencesKeys.DROIDBAR_HAPTICS_ENABLED] ?: true
         )
+    }.catch { error ->
+        Log.e("AyaneSettings", "Không thể đọc cài đặt; sử dụng cấu hình mặc định", error)
+        emit(IslandSettings())
     }
 
     suspend fun updateSettings(update: (IslandSettings) -> IslandSettings) {
-        context.dataStore.edit { preferences ->
-            val resolvedSpeed = preferences[PreferencesKeys.ANIMATION_SPEED_MULTIPLIER] ?: run {
-                when (preferences[PreferencesKeys.LEGACY_ANIMATION_SPEED]) {
-                    "FAST" -> 1.5f
-                    "SLOW" -> 0.7f
-                    else -> 0.7f
+        try {
+            context.dataStore.edit { preferences ->
+                val resolvedSpeed = preferences[PreferencesKeys.ANIMATION_SPEED_MULTIPLIER] ?: run {
+                    when (preferences[PreferencesKeys.LEGACY_ANIMATION_SPEED]) {
+                        "FAST" -> 1.5f
+                        "SLOW" -> 0.7f
+                        else -> 0.7f
+                    }
                 }
+
+                val current = IslandSettings(
+                    isEnabled = preferences[PreferencesKeys.IS_ENABLED] ?: false,
+                    widthDp = preferences[PreferencesKeys.WIDTH_DP] ?: 180,
+                    heightDp = preferences[PreferencesKeys.HEIGHT_DP] ?: 36,
+                    cornerRadiusDp = preferences[PreferencesKeys.CORNER_RADIUS_DP] ?: 22,
+                    topOffsetDp = preferences[PreferencesKeys.TOP_OFFSET_DP] ?: 12,
+                    horizontalOffsetDp = preferences[PreferencesKeys.HORIZONTAL_OFFSET_DP] ?: 0,
+                    isLeftCutout = preferences[PreferencesKeys.IS_LEFT_CUTOUT] ?: false,
+                    isTeardropCutout = preferences[PreferencesKeys.IS_TEARDROP_CUTOUT] ?: false,
+                    showOutline = preferences[PreferencesKeys.SHOW_OUTLINE] ?: true,
+                    outlineColorArgb = preferences[PreferencesKeys.OUTLINE_COLOR_ARGB] ?: 0x33FFFFFF,
+                    outlineThicknessDp = preferences[PreferencesKeys.OUTLINE_THICKNESS_DP] ?: 1.5f,
+                    expandedScale = preferences[PreferencesKeys.EXPANDED_SCALE] ?: 1.1f,
+                    hapticsEnabled = preferences[PreferencesKeys.HAPTICS_ENABLED] ?: true,
+                    showCalls = preferences[PreferencesKeys.SHOW_CALLS] ?: true,
+                    showMedia = preferences[PreferencesKeys.SHOW_MEDIA] ?: true,
+                    showNotifications = preferences[PreferencesKeys.SHOW_NOTIFICATIONS] ?: false,
+                    showLiveProgress = preferences[PreferencesKeys.SHOW_LIVE_PROGRESS] ?: true,
+                    showScreenRecording = preferences[PreferencesKeys.SHOW_SCREEN_RECORDING] ?: true,
+                showFlashlight = preferences[PreferencesKeys.SHOW_FLASHLIGHT] ?: true,
+                    showBluetooth = preferences[PreferencesKeys.SHOW_BLUETOOTH] ?: true,
+                    showCharging = preferences[PreferencesKeys.SHOW_CHARGING] ?: true,
+                    showRingerMode = preferences[PreferencesKeys.SHOW_RINGER_MODE] ?: true,
+                showAirplaneMode = preferences[PreferencesKeys.SHOW_AIRPLANE_MODE] ?: true,
+                    showInLandscape = preferences[PreferencesKeys.SHOW_IN_LANDSCAPE] ?: false,
+                    animationSpeed = resolvedSpeed,
+                    blockedPackages = preferences[PreferencesKeys.BLOCKED_PACKAGES] ?: emptySet(),
+                    restartOnBoot = preferences[PreferencesKeys.RESTART_ON_BOOT] ?: false,
+                    bubbleEffectEnabled = preferences[PreferencesKeys.BUBBLE_EFFECT_ENABLED] ?: true,
+                    dismissMediaOnPause = preferences[PreferencesKeys.DISMISS_MEDIA_ON_PAUSE] ?: false,
+                    alwaysShowPill = preferences[PreferencesKeys.ALWAYS_SHOW_PILL] ?: false,
+                    showDualActivityInCompact = preferences[PreferencesKeys.SHOW_DUAL_ACTIVITY_IN_COMPACT] ?: true,
+                    showFps = preferences[PreferencesKeys.SHOW_FPS] ?: false,
+                    showWeather = preferences[PreferencesKeys.SHOW_WEATHER] ?: false,
+                    showNetworkSpeed = preferences[PreferencesKeys.SHOW_NETWORK_SPEED] ?: false,
+                        showAlarm = preferences[PreferencesKeys.SHOW_ALARM] ?: true,
+                    autoDismissNotifications = preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] ?: false,
+                    notificationAutoDismissSeconds = preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] ?: 3,
+                    persistentCharging = preferences[PreferencesKeys.PERSISTENT_CHARGING] ?: false,
+                    notificationMaxLines = preferences[PreferencesKeys.NOTIFICATION_MAX_LINES] ?: 2,
+                    weatherCity = preferences[PreferencesKeys.WEATHER_CITY] ?: "",
+                    fontKey = preferences[PreferencesKeys.FONT_KEY] ?: "DEFAULT",
+                    swapActivitiesOnSwipe = preferences[PreferencesKeys.SWAP_ACTIVITIES_ON_SWIPE] ?: true,
+                blurredAlbumArtBackground = preferences[PreferencesKeys.BLURRED_ALBUM_ART_BACKGROUND] ?: false,
+                designLanguage = preferences[PreferencesKeys.DESIGN_LANGUAGE]?.let {
+                    try { com.ayane.dynamicisland.model.DesignLanguage.valueOf(it) } catch (_: Exception) { null }
+                } ?: if (preferences[PreferencesKeys.GLASS_ENABLED] == true) com.ayane.dynamicisland.model.DesignLanguage.GLASS else com.ayane.dynamicisland.model.DesignLanguage.MATERIAL3,
+                glassEnabled = preferences[PreferencesKeys.GLASS_ENABLED] ?: false,
+                glassOpacity = preferences[PreferencesKeys.GLASS_OPACITY] ?: 25,
+                mediaWaveAnimation = preferences[PreferencesKeys.MEDIA_WAVE_ANIMATION] ?: true,
+                spinningAlbumArt = preferences[PreferencesKeys.SPINNING_ALBUM_ART] ?: false,
+                wavyProgressBar = preferences[PreferencesKeys.WAVY_PROGRESS_BAR] ?: true,
+                hideOnLockScreen = preferences[PreferencesKeys.HIDE_ON_LOCK_SCREEN] ?: false,
+                expandDamping = preferences[PreferencesKeys.EXPAND_DAMPING] ?: 0.74f,
+                expandStiffness = preferences[PreferencesKeys.EXPAND_STIFFNESS] ?: 380f,
+                appearDamping = preferences[PreferencesKeys.APPEAR_DAMPING] ?: 0.6f,
+                appearStiffness = preferences[PreferencesKeys.APPEAR_STIFFNESS] ?: 280f,
+                splitDamping = preferences[PreferencesKeys.SPLIT_DAMPING] ?: 0.63f,
+                splitStiffness = preferences[PreferencesKeys.SPLIT_STIFFNESS] ?: 320f,
+                    featurePriorities = preferences[PreferencesKeys.FEATURE_PRIORITIES]
+                        ?.split(",")
+                        ?.map { it.trim() }
+                        ?.filter { it.isNotBlank() && it != "TIMER" }
+                        ?.let { list ->
+                            val set = list.toSet()
+                            list + DEFAULT_FEATURE_PRIORITIES.filter { it !in set }
+                        } ?: DEFAULT_FEATURE_PRIORITIES,
+                    mediaControlAlignment = preferences[PreferencesKeys.MEDIA_CONTROL_ALIGNMENT] ?: "CENTER",
+                    mediaLayersOrder = preferences[PreferencesKeys.MEDIA_LAYERS_ORDER]
+                        ?.split(",")
+                        ?.map { it.trim() }
+                        ?.filter { it.isNotBlank() }
+                        ?.let { list ->
+                            val set = list.toSet()
+                            list.filter { it in DEFAULT_MEDIA_LAYERS } + DEFAULT_MEDIA_LAYERS.filter { it !in set }
+                        } ?: DEFAULT_MEDIA_LAYERS,
+                    droidbarEnabled = preferences[PreferencesKeys.DROIDBAR_ENABLED] ?: false,
+                droidbarShowFlashlight = preferences[PreferencesKeys.DROIDBAR_SHOW_FLASHLIGHT] ?: true,
+                droidbarShowRingMode = preferences[PreferencesKeys.DROIDBAR_SHOW_RING_MODE] ?: true,
+                droidbarShowScreenshot = preferences[PreferencesKeys.DROIDBAR_SHOW_SCREENSHOT] ?: true,
+                droidbarShowWifi = preferences[PreferencesKeys.DROIDBAR_SHOW_WIFI] ?: true,
+                droidbarShowMobileData = preferences[PreferencesKeys.DROIDBAR_SHOW_MOBILE_DATA] ?: true,
+                droidbarUseMostUsedApps = preferences[PreferencesKeys.DROIDBAR_USE_MOST_USED_APPS] ?: true,
+                droidbarCustomApps = preferences[PreferencesKeys.DROIDBAR_CUSTOM_APPS]
+                    ?.split(",")
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotBlank() } ?: emptyList(),
+                droidbarBackgroundOpacity = preferences[PreferencesKeys.DROIDBAR_BACKGROUND_OPACITY] ?: 1.0f,
+                droidbarMaxHeightDp = preferences[PreferencesKeys.DROIDBAR_MAX_HEIGHT_DP] ?: 600,
+                droidbarYOffsetDp = preferences[PreferencesKeys.DROIDBAR_Y_OFFSET_DP] ?: 0,
+                droidbarHapticsEnabled = preferences[PreferencesKeys.DROIDBAR_HAPTICS_ENABLED] ?: true
+                )
+
+                val newSettings = update(current)
+
+                preferences[PreferencesKeys.IS_ENABLED] = newSettings.isEnabled
+                preferences[PreferencesKeys.WIDTH_DP] = newSettings.widthDp
+                preferences[PreferencesKeys.HEIGHT_DP] = newSettings.heightDp
+                preferences[PreferencesKeys.CORNER_RADIUS_DP] = newSettings.cornerRadiusDp
+                preferences[PreferencesKeys.TOP_OFFSET_DP] = newSettings.topOffsetDp
+                preferences[PreferencesKeys.HORIZONTAL_OFFSET_DP] = newSettings.horizontalOffsetDp
+                preferences[PreferencesKeys.IS_LEFT_CUTOUT] = newSettings.isLeftCutout
+                preferences[PreferencesKeys.IS_TEARDROP_CUTOUT] = newSettings.isTeardropCutout
+                preferences[PreferencesKeys.SHOW_OUTLINE] = newSettings.showOutline
+                preferences[PreferencesKeys.OUTLINE_COLOR_ARGB] = newSettings.outlineColorArgb
+                preferences[PreferencesKeys.OUTLINE_THICKNESS_DP] = newSettings.outlineThicknessDp
+                preferences[PreferencesKeys.EXPANDED_SCALE] = newSettings.expandedScale
+                preferences[PreferencesKeys.HAPTICS_ENABLED] = newSettings.hapticsEnabled
+                preferences[PreferencesKeys.SHOW_CALLS] = newSettings.showCalls
+                preferences[PreferencesKeys.SHOW_MEDIA] = newSettings.showMedia
+                preferences[PreferencesKeys.SHOW_NOTIFICATIONS] = newSettings.showNotifications
+                preferences[PreferencesKeys.SHOW_LIVE_PROGRESS] = newSettings.showLiveProgress
+                preferences[PreferencesKeys.SHOW_SCREEN_RECORDING] = newSettings.showScreenRecording
+                preferences[PreferencesKeys.SHOW_FLASHLIGHT] = newSettings.showFlashlight
+                preferences[PreferencesKeys.SHOW_BLUETOOTH] = newSettings.showBluetooth
+                preferences[PreferencesKeys.SHOW_CHARGING] = newSettings.showCharging
+                preferences[PreferencesKeys.SHOW_RINGER_MODE] = newSettings.showRingerMode
+                preferences[PreferencesKeys.SHOW_AIRPLANE_MODE] = newSettings.showAirplaneMode
+                preferences[PreferencesKeys.SHOW_IN_LANDSCAPE] = newSettings.showInLandscape
+                preferences[PreferencesKeys.ANIMATION_SPEED_MULTIPLIER] = newSettings.animationSpeed
+                preferences.remove(PreferencesKeys.LEGACY_ANIMATION_SPEED)
+                preferences[PreferencesKeys.BLOCKED_PACKAGES] = newSettings.blockedPackages
+                preferences[PreferencesKeys.RESTART_ON_BOOT] = newSettings.restartOnBoot
+                preferences[PreferencesKeys.BUBBLE_EFFECT_ENABLED] = newSettings.bubbleEffectEnabled
+                preferences[PreferencesKeys.DISMISS_MEDIA_ON_PAUSE] = newSettings.dismissMediaOnPause
+                preferences[PreferencesKeys.ALWAYS_SHOW_PILL] = newSettings.alwaysShowPill
+                preferences[PreferencesKeys.SHOW_DUAL_ACTIVITY_IN_COMPACT] = newSettings.showDualActivityInCompact
+                preferences[PreferencesKeys.SHOW_FPS] = newSettings.showFps
+                preferences[PreferencesKeys.SHOW_WEATHER] = newSettings.showWeather
+                preferences[PreferencesKeys.SHOW_NETWORK_SPEED] = newSettings.showNetworkSpeed
+                preferences[PreferencesKeys.SHOW_ALARM] = newSettings.showAlarm
+                preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] = newSettings.autoDismissNotifications
+                preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] = newSettings.notificationAutoDismissSeconds
+                preferences[PreferencesKeys.PERSISTENT_CHARGING] = newSettings.persistentCharging
+                preferences[PreferencesKeys.NOTIFICATION_MAX_LINES] = newSettings.notificationMaxLines
+                preferences[PreferencesKeys.WEATHER_CITY] = newSettings.weatherCity
+                preferences[PreferencesKeys.FONT_KEY] = newSettings.fontKey
+                preferences[PreferencesKeys.SWAP_ACTIVITIES_ON_SWIPE] = newSettings.swapActivitiesOnSwipe
+                preferences[PreferencesKeys.BLURRED_ALBUM_ART_BACKGROUND] = newSettings.blurredAlbumArtBackground
+                preferences[PreferencesKeys.DESIGN_LANGUAGE] = newSettings.designLanguage.name
+                preferences[PreferencesKeys.GLASS_ENABLED] = (newSettings.designLanguage == com.ayane.dynamicisland.model.DesignLanguage.GLASS)
+                preferences[PreferencesKeys.GLASS_OPACITY] = newSettings.glassOpacity
+                preferences[PreferencesKeys.MEDIA_WAVE_ANIMATION] = newSettings.mediaWaveAnimation
+                preferences[PreferencesKeys.SPINNING_ALBUM_ART] = newSettings.spinningAlbumArt
+                preferences[PreferencesKeys.WAVY_PROGRESS_BAR] = newSettings.wavyProgressBar
+                preferences[PreferencesKeys.HIDE_ON_LOCK_SCREEN] = newSettings.hideOnLockScreen
+                preferences[PreferencesKeys.EXPAND_DAMPING] = newSettings.expandDamping
+                preferences[PreferencesKeys.EXPAND_STIFFNESS] = newSettings.expandStiffness
+                preferences[PreferencesKeys.APPEAR_DAMPING] = newSettings.appearDamping
+                preferences[PreferencesKeys.APPEAR_STIFFNESS] = newSettings.appearStiffness
+                preferences[PreferencesKeys.SPLIT_DAMPING] = newSettings.splitDamping
+                preferences[PreferencesKeys.SPLIT_STIFFNESS] = newSettings.splitStiffness
+                preferences[PreferencesKeys.FEATURE_PRIORITIES] = newSettings.featurePriorities.joinToString(",")
+                preferences[PreferencesKeys.MEDIA_CONTROL_ALIGNMENT] = newSettings.mediaControlAlignment
+                preferences[PreferencesKeys.MEDIA_LAYERS_ORDER] = newSettings.mediaLayersOrder.joinToString(",")
+                preferences[PreferencesKeys.DROIDBAR_ENABLED] = newSettings.droidbarEnabled
+                preferences[PreferencesKeys.DROIDBAR_SHOW_FLASHLIGHT] = newSettings.droidbarShowFlashlight
+                preferences[PreferencesKeys.DROIDBAR_SHOW_RING_MODE] = newSettings.droidbarShowRingMode
+                preferences[PreferencesKeys.DROIDBAR_SHOW_SCREENSHOT] = newSettings.droidbarShowScreenshot
+                preferences[PreferencesKeys.DROIDBAR_SHOW_WIFI] = newSettings.droidbarShowWifi
+                preferences[PreferencesKeys.DROIDBAR_SHOW_MOBILE_DATA] = newSettings.droidbarShowMobileData
+                preferences[PreferencesKeys.DROIDBAR_USE_MOST_USED_APPS] = newSettings.droidbarUseMostUsedApps
+                preferences[PreferencesKeys.DROIDBAR_CUSTOM_APPS] = newSettings.droidbarCustomApps.joinToString(",")
+                preferences[PreferencesKeys.DROIDBAR_BACKGROUND_OPACITY] = newSettings.droidbarBackgroundOpacity
+                preferences[PreferencesKeys.DROIDBAR_MAX_HEIGHT_DP] = newSettings.droidbarMaxHeightDp
+                preferences[PreferencesKeys.DROIDBAR_Y_OFFSET_DP] = newSettings.droidbarYOffsetDp
+                preferences[PreferencesKeys.DROIDBAR_HAPTICS_ENABLED] = newSettings.droidbarHapticsEnabled
             }
-
-            val current = IslandSettings(
-                isEnabled = preferences[PreferencesKeys.IS_ENABLED] ?: true,
-                widthDp = preferences[PreferencesKeys.WIDTH_DP] ?: 180,
-                heightDp = preferences[PreferencesKeys.HEIGHT_DP] ?: 36,
-                cornerRadiusDp = preferences[PreferencesKeys.CORNER_RADIUS_DP] ?: 22,
-                topOffsetDp = preferences[PreferencesKeys.TOP_OFFSET_DP] ?: 12,
-                horizontalOffsetDp = preferences[PreferencesKeys.HORIZONTAL_OFFSET_DP] ?: 0,
-                isLeftCutout = preferences[PreferencesKeys.IS_LEFT_CUTOUT] ?: false,
-                isTeardropCutout = preferences[PreferencesKeys.IS_TEARDROP_CUTOUT] ?: false,
-                showOutline = preferences[PreferencesKeys.SHOW_OUTLINE] ?: true,
-                outlineColorArgb = preferences[PreferencesKeys.OUTLINE_COLOR_ARGB] ?: 0x33FFFFFF,
-                outlineThicknessDp = preferences[PreferencesKeys.OUTLINE_THICKNESS_DP] ?: 1.5f,
-                expandedScale = preferences[PreferencesKeys.EXPANDED_SCALE] ?: 1.1f,
-                hapticsEnabled = preferences[PreferencesKeys.HAPTICS_ENABLED] ?: true,
-                showCalls = preferences[PreferencesKeys.SHOW_CALLS] ?: true,
-                showMedia = preferences[PreferencesKeys.SHOW_MEDIA] ?: true,
-                showNotifications = preferences[PreferencesKeys.SHOW_NOTIFICATIONS] ?: false,
-                showLiveProgress = preferences[PreferencesKeys.SHOW_LIVE_PROGRESS] ?: true,
-                showScreenRecording = preferences[PreferencesKeys.SHOW_SCREEN_RECORDING] ?: true,
-            showFlashlight = preferences[PreferencesKeys.SHOW_FLASHLIGHT] ?: true,
-                showBluetooth = preferences[PreferencesKeys.SHOW_BLUETOOTH] ?: true,
-                showCharging = preferences[PreferencesKeys.SHOW_CHARGING] ?: true,
-                showRingerMode = preferences[PreferencesKeys.SHOW_RINGER_MODE] ?: true,
-            showAirplaneMode = preferences[PreferencesKeys.SHOW_AIRPLANE_MODE] ?: true,
-                showInLandscape = preferences[PreferencesKeys.SHOW_IN_LANDSCAPE] ?: false,
-                animationSpeed = resolvedSpeed,
-                blockedPackages = preferences[PreferencesKeys.BLOCKED_PACKAGES] ?: emptySet(),
-                restartOnBoot = preferences[PreferencesKeys.RESTART_ON_BOOT] ?: true,
-                bubbleEffectEnabled = preferences[PreferencesKeys.BUBBLE_EFFECT_ENABLED] ?: true,
-                dismissMediaOnPause = preferences[PreferencesKeys.DISMISS_MEDIA_ON_PAUSE] ?: false,
-                alwaysShowPill = preferences[PreferencesKeys.ALWAYS_SHOW_PILL] ?: false,
-                showDualActivityInCompact = preferences[PreferencesKeys.SHOW_DUAL_ACTIVITY_IN_COMPACT] ?: true,
-                showFps = preferences[PreferencesKeys.SHOW_FPS] ?: false,
-                showWeather = preferences[PreferencesKeys.SHOW_WEATHER] ?: false,
-                showNetworkSpeed = preferences[PreferencesKeys.SHOW_NETWORK_SPEED] ?: false,
-                    showAlarm = preferences[PreferencesKeys.SHOW_ALARM] ?: true,
-                autoDismissNotifications = preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] ?: false,
-                notificationAutoDismissSeconds = preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] ?: 3,
-                persistentCharging = preferences[PreferencesKeys.PERSISTENT_CHARGING] ?: false,
-                notificationMaxLines = preferences[PreferencesKeys.NOTIFICATION_MAX_LINES] ?: 2,
-                weatherCity = preferences[PreferencesKeys.WEATHER_CITY] ?: "",
-                fontKey = preferences[PreferencesKeys.FONT_KEY] ?: "DEFAULT",
-                swapActivitiesOnSwipe = preferences[PreferencesKeys.SWAP_ACTIVITIES_ON_SWIPE] ?: true,
-            blurredAlbumArtBackground = preferences[PreferencesKeys.BLURRED_ALBUM_ART_BACKGROUND] ?: false,
-            designLanguage = preferences[PreferencesKeys.DESIGN_LANGUAGE]?.let {
-                try { com.ayane.dynamicisland.model.DesignLanguage.valueOf(it) } catch (_: Exception) { null }
-            } ?: if (preferences[PreferencesKeys.GLASS_ENABLED] == true) com.ayane.dynamicisland.model.DesignLanguage.GLASS else com.ayane.dynamicisland.model.DesignLanguage.MATERIAL3,
-            glassEnabled = preferences[PreferencesKeys.GLASS_ENABLED] ?: false,
-            glassOpacity = preferences[PreferencesKeys.GLASS_OPACITY] ?: 25,
-            mediaWaveAnimation = preferences[PreferencesKeys.MEDIA_WAVE_ANIMATION] ?: true,
-            spinningAlbumArt = preferences[PreferencesKeys.SPINNING_ALBUM_ART] ?: false,
-            wavyProgressBar = preferences[PreferencesKeys.WAVY_PROGRESS_BAR] ?: true,
-            hideOnLockScreen = preferences[PreferencesKeys.HIDE_ON_LOCK_SCREEN] ?: false,
-            expandDamping = preferences[PreferencesKeys.EXPAND_DAMPING] ?: 0.74f,
-            expandStiffness = preferences[PreferencesKeys.EXPAND_STIFFNESS] ?: 380f,
-            appearDamping = preferences[PreferencesKeys.APPEAR_DAMPING] ?: 0.6f,
-            appearStiffness = preferences[PreferencesKeys.APPEAR_STIFFNESS] ?: 280f,
-            splitDamping = preferences[PreferencesKeys.SPLIT_DAMPING] ?: 0.63f,
-            splitStiffness = preferences[PreferencesKeys.SPLIT_STIFFNESS] ?: 320f,
-                featurePriorities = preferences[PreferencesKeys.FEATURE_PRIORITIES]
-                    ?.split(",")
-                    ?.map { it.trim() }
-                    ?.filter { it.isNotBlank() && it != "TIMER" }
-                    ?.let { list ->
-                        val set = list.toSet()
-                        list + DEFAULT_FEATURE_PRIORITIES.filter { it !in set }
-                    } ?: DEFAULT_FEATURE_PRIORITIES,
-                mediaControlAlignment = preferences[PreferencesKeys.MEDIA_CONTROL_ALIGNMENT] ?: "CENTER",
-                mediaLayersOrder = preferences[PreferencesKeys.MEDIA_LAYERS_ORDER]
-                    ?.split(",")
-                    ?.map { it.trim() }
-                    ?.filter { it.isNotBlank() }
-                    ?.let { list ->
-                        val set = list.toSet()
-                        list.filter { it in DEFAULT_MEDIA_LAYERS } + DEFAULT_MEDIA_LAYERS.filter { it !in set }
-                    } ?: DEFAULT_MEDIA_LAYERS,
-                droidbarEnabled = preferences[PreferencesKeys.DROIDBAR_ENABLED] ?: false,
-            droidbarShowFlashlight = preferences[PreferencesKeys.DROIDBAR_SHOW_FLASHLIGHT] ?: true,
-            droidbarShowRingMode = preferences[PreferencesKeys.DROIDBAR_SHOW_RING_MODE] ?: true,
-            droidbarShowScreenshot = preferences[PreferencesKeys.DROIDBAR_SHOW_SCREENSHOT] ?: true,
-            droidbarShowWifi = preferences[PreferencesKeys.DROIDBAR_SHOW_WIFI] ?: true,
-            droidbarShowMobileData = preferences[PreferencesKeys.DROIDBAR_SHOW_MOBILE_DATA] ?: true,
-            droidbarUseMostUsedApps = preferences[PreferencesKeys.DROIDBAR_USE_MOST_USED_APPS] ?: true,
-            droidbarCustomApps = preferences[PreferencesKeys.DROIDBAR_CUSTOM_APPS]
-                ?.split(",")
-                ?.map { it.trim() }
-                ?.filter { it.isNotBlank() } ?: emptyList(),
-            droidbarBackgroundOpacity = preferences[PreferencesKeys.DROIDBAR_BACKGROUND_OPACITY] ?: 1.0f,
-            droidbarMaxHeightDp = preferences[PreferencesKeys.DROIDBAR_MAX_HEIGHT_DP] ?: 600,
-            droidbarYOffsetDp = preferences[PreferencesKeys.DROIDBAR_Y_OFFSET_DP] ?: 0,
-            droidbarHapticsEnabled = preferences[PreferencesKeys.DROIDBAR_HAPTICS_ENABLED] ?: true
-            )
-
-            val newSettings = update(current)
-
-            preferences[PreferencesKeys.IS_ENABLED] = newSettings.isEnabled
-            preferences[PreferencesKeys.WIDTH_DP] = newSettings.widthDp
-            preferences[PreferencesKeys.HEIGHT_DP] = newSettings.heightDp
-            preferences[PreferencesKeys.CORNER_RADIUS_DP] = newSettings.cornerRadiusDp
-            preferences[PreferencesKeys.TOP_OFFSET_DP] = newSettings.topOffsetDp
-            preferences[PreferencesKeys.HORIZONTAL_OFFSET_DP] = newSettings.horizontalOffsetDp
-            preferences[PreferencesKeys.IS_LEFT_CUTOUT] = newSettings.isLeftCutout
-            preferences[PreferencesKeys.IS_TEARDROP_CUTOUT] = newSettings.isTeardropCutout
-            preferences[PreferencesKeys.SHOW_OUTLINE] = newSettings.showOutline
-            preferences[PreferencesKeys.OUTLINE_COLOR_ARGB] = newSettings.outlineColorArgb
-            preferences[PreferencesKeys.OUTLINE_THICKNESS_DP] = newSettings.outlineThicknessDp
-            preferences[PreferencesKeys.EXPANDED_SCALE] = newSettings.expandedScale
-            preferences[PreferencesKeys.HAPTICS_ENABLED] = newSettings.hapticsEnabled
-            preferences[PreferencesKeys.SHOW_CALLS] = newSettings.showCalls
-            preferences[PreferencesKeys.SHOW_MEDIA] = newSettings.showMedia
-            preferences[PreferencesKeys.SHOW_NOTIFICATIONS] = newSettings.showNotifications
-            preferences[PreferencesKeys.SHOW_LIVE_PROGRESS] = newSettings.showLiveProgress
-            preferences[PreferencesKeys.SHOW_SCREEN_RECORDING] = newSettings.showScreenRecording
-            preferences[PreferencesKeys.SHOW_FLASHLIGHT] = newSettings.showFlashlight
-            preferences[PreferencesKeys.SHOW_BLUETOOTH] = newSettings.showBluetooth
-            preferences[PreferencesKeys.SHOW_CHARGING] = newSettings.showCharging
-            preferences[PreferencesKeys.SHOW_RINGER_MODE] = newSettings.showRingerMode
-            preferences[PreferencesKeys.SHOW_AIRPLANE_MODE] = newSettings.showAirplaneMode
-            preferences[PreferencesKeys.SHOW_IN_LANDSCAPE] = newSettings.showInLandscape
-            preferences[PreferencesKeys.ANIMATION_SPEED_MULTIPLIER] = newSettings.animationSpeed
-            preferences.remove(PreferencesKeys.LEGACY_ANIMATION_SPEED)
-            preferences[PreferencesKeys.BLOCKED_PACKAGES] = newSettings.blockedPackages
-            preferences[PreferencesKeys.RESTART_ON_BOOT] = newSettings.restartOnBoot
-            preferences[PreferencesKeys.BUBBLE_EFFECT_ENABLED] = newSettings.bubbleEffectEnabled
-            preferences[PreferencesKeys.DISMISS_MEDIA_ON_PAUSE] = newSettings.dismissMediaOnPause
-            preferences[PreferencesKeys.ALWAYS_SHOW_PILL] = newSettings.alwaysShowPill
-            preferences[PreferencesKeys.SHOW_DUAL_ACTIVITY_IN_COMPACT] = newSettings.showDualActivityInCompact
-            preferences[PreferencesKeys.SHOW_FPS] = newSettings.showFps
-            preferences[PreferencesKeys.SHOW_WEATHER] = newSettings.showWeather
-            preferences[PreferencesKeys.SHOW_NETWORK_SPEED] = newSettings.showNetworkSpeed
-            preferences[PreferencesKeys.SHOW_ALARM] = newSettings.showAlarm
-            preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] = newSettings.autoDismissNotifications
-            preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] = newSettings.notificationAutoDismissSeconds
-            preferences[PreferencesKeys.PERSISTENT_CHARGING] = newSettings.persistentCharging
-            preferences[PreferencesKeys.NOTIFICATION_MAX_LINES] = newSettings.notificationMaxLines
-            preferences[PreferencesKeys.WEATHER_CITY] = newSettings.weatherCity
-            preferences[PreferencesKeys.FONT_KEY] = newSettings.fontKey
-            preferences[PreferencesKeys.SWAP_ACTIVITIES_ON_SWIPE] = newSettings.swapActivitiesOnSwipe
-            preferences[PreferencesKeys.BLURRED_ALBUM_ART_BACKGROUND] = newSettings.blurredAlbumArtBackground
-            preferences[PreferencesKeys.DESIGN_LANGUAGE] = newSettings.designLanguage.name
-            preferences[PreferencesKeys.GLASS_ENABLED] = (newSettings.designLanguage == com.ayane.dynamicisland.model.DesignLanguage.GLASS)
-            preferences[PreferencesKeys.GLASS_OPACITY] = newSettings.glassOpacity
-            preferences[PreferencesKeys.MEDIA_WAVE_ANIMATION] = newSettings.mediaWaveAnimation
-            preferences[PreferencesKeys.SPINNING_ALBUM_ART] = newSettings.spinningAlbumArt
-            preferences[PreferencesKeys.WAVY_PROGRESS_BAR] = newSettings.wavyProgressBar
-            preferences[PreferencesKeys.HIDE_ON_LOCK_SCREEN] = newSettings.hideOnLockScreen
-            preferences[PreferencesKeys.EXPAND_DAMPING] = newSettings.expandDamping
-            preferences[PreferencesKeys.EXPAND_STIFFNESS] = newSettings.expandStiffness
-            preferences[PreferencesKeys.APPEAR_DAMPING] = newSettings.appearDamping
-            preferences[PreferencesKeys.APPEAR_STIFFNESS] = newSettings.appearStiffness
-            preferences[PreferencesKeys.SPLIT_DAMPING] = newSettings.splitDamping
-            preferences[PreferencesKeys.SPLIT_STIFFNESS] = newSettings.splitStiffness
-            preferences[PreferencesKeys.FEATURE_PRIORITIES] = newSettings.featurePriorities.joinToString(",")
-            preferences[PreferencesKeys.MEDIA_CONTROL_ALIGNMENT] = newSettings.mediaControlAlignment
-            preferences[PreferencesKeys.MEDIA_LAYERS_ORDER] = newSettings.mediaLayersOrder.joinToString(",")
-            preferences[PreferencesKeys.DROIDBAR_ENABLED] = newSettings.droidbarEnabled
-            preferences[PreferencesKeys.DROIDBAR_SHOW_FLASHLIGHT] = newSettings.droidbarShowFlashlight
-            preferences[PreferencesKeys.DROIDBAR_SHOW_RING_MODE] = newSettings.droidbarShowRingMode
-            preferences[PreferencesKeys.DROIDBAR_SHOW_SCREENSHOT] = newSettings.droidbarShowScreenshot
-            preferences[PreferencesKeys.DROIDBAR_SHOW_WIFI] = newSettings.droidbarShowWifi
-            preferences[PreferencesKeys.DROIDBAR_SHOW_MOBILE_DATA] = newSettings.droidbarShowMobileData
-            preferences[PreferencesKeys.DROIDBAR_USE_MOST_USED_APPS] = newSettings.droidbarUseMostUsedApps
-            preferences[PreferencesKeys.DROIDBAR_CUSTOM_APPS] = newSettings.droidbarCustomApps.joinToString(",")
-            preferences[PreferencesKeys.DROIDBAR_BACKGROUND_OPACITY] = newSettings.droidbarBackgroundOpacity
-            preferences[PreferencesKeys.DROIDBAR_MAX_HEIGHT_DP] = newSettings.droidbarMaxHeightDp
-            preferences[PreferencesKeys.DROIDBAR_Y_OFFSET_DP] = newSettings.droidbarYOffsetDp
-            preferences[PreferencesKeys.DROIDBAR_HAPTICS_ENABLED] = newSettings.droidbarHapticsEnabled
+        } catch (error: Exception) {
+            Log.e("AyaneSettings", "Không thể lưu cài đặt Ayane", error)
         }
+
     }
 }
