@@ -1,17 +1,19 @@
-CAP NHAT DAO DONG LEN REPOSITORY CU
+CAP NHAT DAO DONG ULTRA V3.0 BANG TERMUX
 
-1. Tai DaoDong_Android_v2.0_source.zip vao thu muc Download cua dien thoai.
-2. Mo Termux, chay:
+1) Tai DaoDong_Android_v3.0_source.zip vao Download.
+2) Mo Termux va chay:
 
 cd ~/storage/downloads/DynamicIslandAndroid
-unzip -o ~/storage/downloads/DaoDong_Android_v2.0_source.zip
+unzip -o ~/storage/downloads/DaoDong_Android_v3.0_source.zip -d .
+
 git add -A
-git commit -m "Upgrade Dao Dong v2.0"
+git commit -m "Upgrade Dao Dong Ultra v3.0"
 git push origin main
 
-3. Mo GitHub > Actions, chon lan chay moi nhat.
-4. Khi xanh thanh cong, tai artifact Dao-dong-Android-APK-v2.
-5. Giai nen artifact va cai app-debug.apk.
+3) Mo repository GitHub > Actions.
+4) Mo lan chay workflow moi nhat: "Tao APK Dao dong v3.0".
+5) Khi thanh cong, tai artifact Dao-dong-Android-APK-v3.
+6) Giai nen artifact ZIP va cai app-debug.apk.
 
-Neu git commit bao "nothing to commit", kiem tra git status. Neu push yeu cau Username/Password,
-nhap username GitHub va Personal Access Token (khong dung mat khau tai khoan GitHub).
+Luu y: ZIP nay co cac thu muc .github, app va file Gradle o ngay cap goc.
+Neu git bao nothing to commit thi kiem tra git status; co the cac file khong thay doi.

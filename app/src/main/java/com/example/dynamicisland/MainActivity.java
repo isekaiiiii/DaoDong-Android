@@ -78,7 +78,7 @@ public class MainActivity extends Activity {
         LinearLayout titleRow = row();
         TextView title = text("Đảo động", 32, Color.WHITE, true);
         titleRow.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView version = text("V2.0 STUDIO", 10, 0xFFD9CEFF, true);
+        TextView version = text("V3.0 ULTRA", 10, 0xFFD9CEFF, true);
         version.setPadding(dp(11), dp(7), dp(11), dp(7));
         version.setBackground(roundRect(0x332A2540, dp(30), 0x775A4C7E, dp(1)));
         titleRow.addView(version);
@@ -130,6 +130,8 @@ public class MainActivity extends Activity {
         addPermissionRow(permissions, "Thông báo dịch vụ nền", "Cho Android biết đảo động đang hoạt động", 2);
         addDivider(permissions);
         addPermissionRow(permissions, "Danh sách ứng dụng đã cài", "Dùng để lấy tên và biểu tượng ứng dụng gửi thông báo", 3);
+        addDivider(permissions);
+        addPermissionRow(permissions, "Quyền nhận diện ứng dụng đang chơi", "Dùng để ẩn đảo động khi mở game", 4);
         permissionStatus = text("Đang kiểm tra quyền…", 11, GOLD, false);
         permissions.addView(permissionStatus, fullWidthTop(-2, 10));
         Button battery = smallButton("MỞ CÀI ĐẶT PIN / CHẠY NỀN");
@@ -141,11 +143,12 @@ public class MainActivity extends Activity {
         LinearLayout dimensions = card();
         dimensions.setOrientation(LinearLayout.VERTICAL);
         dimensions.setPadding(dp(15), dp(12), dp(15), dp(14));
-        addSlider(dimensions, "Chiều rộng đảo", "width", 150, 380, 235, " dp");
-        addSlider(dimensions, "Chiều cao đảo thu gọn", "height", 38, 160, 62, " dp");
-        addSlider(dimensions, "Chiều cao khi mở rộng", "expanded_height", 130, 480, 260, " dp");
-        addSlider(dimensions, "Vị trí ngang · trái / phải", "x", -300, 300, 0, " dp");
-        addSlider(dimensions, "Vị trí dọc · lên / xuống", "y", 0, 800, 12, " dp");
+        addSlider(dimensions, "Chiều rộng đảo thu gọn", "width", 140, 400, 235, " dp");
+        addSlider(dimensions, "Chiều cao đảo thu gọn", "height", 38, 180, 62, " dp");
+        addSlider(dimensions, "Chiều rộng khi mở rộng", "expanded_width", 180, 480, 330, " dp");
+        addSlider(dimensions, "Chiều cao khi mở rộng", "expanded_height", 130, 700, 300, " dp");
+        addSlider(dimensions, "Vị trí ngang · trái (−) / phải (+)", "x", -360, 360, 0, " dp");
+        addSlider(dimensions, "Vị trí dọc · lên (−) / xuống (+)", "y", -240, 900, 12, " dp");
         addSlider(dimensions, "Độ bo góc", "corner_radius", 12, 88, 38, " dp");
         addSlider(dimensions, "Độ dày viền", "border_width", 0, 5, 1, " dp");
         Button center = outlineButton("CĂN GIỮA ĐẢO ĐỘNG");
@@ -178,11 +181,21 @@ public class MainActivity extends Activity {
         EditText textHex = colorInput("Màu chữ", prefs.getInt("text_color", Color.WHITE));
         EditText panelHex = colorInput("Màu nền bảng mở rộng", prefs.getInt("panel_bg_color", 0xFF171923));
         EditText borderHex = colorInput("Màu viền", prefs.getInt("border_color", PURPLE));
+        EditText notificationBgHex = colorInput("Màu nền thông báo", prefs.getInt("notification_bg_color", 0xFF202431));
+        EditText notificationTextHex = colorInput("Màu chữ thông báo", prefs.getInt("notification_text_color", Color.WHITE));
+        EditText mediaHex = colorInput("Màu trình phát nhạc", prefs.getInt("media_color", PURPLE));
+        EditText lowBatteryHex = colorInput("Màu cảnh báo pin yếu", prefs.getInt("low_battery_color", 0xFFFF5D73));
+        EditText callHex = colorInput("Màu cuộc gọi", prefs.getInt("call_color", 0xFF76DDAA));
         colorEditor.addView(accentHex, fullWidthTop(48, 6));
         colorEditor.addView(backgroundHex, fullWidthTop(48, 8));
         colorEditor.addView(textHex, fullWidthTop(48, 8));
         colorEditor.addView(panelHex, fullWidthTop(48, 8));
         colorEditor.addView(borderHex, fullWidthTop(48, 8));
+        colorEditor.addView(notificationBgHex, fullWidthTop(48, 8));
+        colorEditor.addView(notificationTextHex, fullWidthTop(48, 8));
+        colorEditor.addView(mediaHex, fullWidthTop(48, 8));
+        colorEditor.addView(lowBatteryHex, fullWidthTop(48, 8));
+        colorEditor.addView(callHex, fullWidthTop(48, 8));
         Button applyColors = button("ÁP DỤNG TOÀN BỘ MÀU", accent);
         applyColors.setOnClickListener(v -> {
             try {
@@ -191,9 +204,16 @@ public class MainActivity extends Activity {
                 int tx = Color.parseColor(textHex.getText().toString().trim());
                 int panel = Color.parseColor(panelHex.getText().toString().trim());
                 int border = Color.parseColor(borderHex.getText().toString().trim());
+                int notifBg = Color.parseColor(notificationBgHex.getText().toString().trim());
+                int notifText = Color.parseColor(notificationTextHex.getText().toString().trim());
+                int mediaColor = Color.parseColor(mediaHex.getText().toString().trim());
+                int lowColor = Color.parseColor(lowBatteryHex.getText().toString().trim());
+                int callColor = Color.parseColor(callHex.getText().toString().trim());
                 prefs.edit().putInt("accent_color", a).putInt("island_bg_color", bg)
                         .putInt("text_color", tx).putInt("panel_bg_color", panel)
-                        .putInt("border_color", border).apply();
+                        .putInt("border_color", border).putInt("notification_bg_color", notifBg)
+                        .putInt("notification_text_color", notifText).putInt("media_color", mediaColor)
+                        .putInt("low_battery_color", lowColor).putInt("call_color", callColor).apply();
                 accent = a;
                 hideKeyboard();
                 refreshIsland();
@@ -271,7 +291,37 @@ public class MainActivity extends Activity {
         addDivider(features);
         addSwitch(features, "Nút bỏ qua thông báo", "Cho phép đóng thông báo đang hiển thị", "show_dismiss_action", true);
         addDivider(features);
-        addSwitch(features, "Trình phát nhạc", "Bài trước, phát / tạm dừng, bài tiếp", "show_media", true);
+        addSwitch(features, "Hiển thị nút nghe / từ chối cuộc gọi", "Chỉ dùng nếu ứng dụng gọi cung cấp thao tác trong thông báo", "show_calls", true);
+        addDivider(features);
+        addSwitch(features, "Ưu tiên ảnh đại diện người nhắn", "Nếu không có ảnh người gửi sẽ dùng icon ứng dụng", "prefer_sender_avatar", true);
+        addDivider(features);
+        addSwitch(features, "Tự chuyển thông báo", "Tự luân phiên giữa các ứng dụng; có thể vuốt trái/phải", "auto_cycle_notifications", true);
+        addDivider(features);
+        addSwitch(features, "Hiệu ứng thông báo", "Chạy hiệu ứng khi có tin nhắn hoặc thông báo mới", "animate_notifications", true);
+        TextView effectLabel = text("Kiểu hiệu ứng", 12, 0xFFE8E8F0, true);
+        features.addView(effectLabel, fullWidthTop(-2, 8));
+        RadioGroup effects = new RadioGroup(this);
+        effects.setOrientation(RadioGroup.HORIZONTAL);
+        String currentEffect = prefs.getString("notification_effect", "slide");
+        String[] effectValues = {"slide", "fade", "pop"};
+        String[] effectLabels = {"Trượt", "Mờ dần", "Nảy"};
+        for (int i = 0; i < effectValues.length; i++) {
+            RadioButton rb = new RadioButton(this);
+            rb.setText(effectLabels[i]);
+            rb.setTextColor(Color.WHITE);
+            rb.setButtonTintList(android.content.res.ColorStateList.valueOf(accent));
+            rb.setId(View.generateViewId());
+            rb.setTag(effectValues[i]);
+            effects.addView(rb);
+            if (currentEffect.equals(effectValues[i])) effects.check(rb.getId());
+        }
+        effects.setOnCheckedChangeListener((group, checkedId) -> {
+            RadioButton selected = group.findViewById(checkedId);
+            if (selected != null) prefs.edit().putString("notification_effect", String.valueOf(selected.getTag())).apply();
+        });
+        features.addView(effects, fullWidthTop(-2, 2));
+        addDivider(features);
+        addSwitch(features, "Trình phát nhạc", "Bài trước, phát / tạm dừng, bài tiếp và ảnh album", "show_media", true);
         addDivider(features);
         addSwitch(features, "Pin & trạng thái sạc", "Phần trăm pin và trạng thái sạc", "show_battery", true);
         addDivider(features);
@@ -290,7 +340,21 @@ public class MainActivity extends Activity {
         background.addView(note, fullWidthTop(-2, 10));
         page.addView(background, fullWidthTop(-2, 8));
 
-        addSectionTitle(page, "07", "Hẹn giờ thông minh", "Đếm ngược ngay trên đảo động.");
+        addSectionTitle(page, "07", "Chế độ chơi game", "Ẩn đảo động khi ứng dụng trò chơi đang ở phía trước.");
+        LinearLayout gameCard = card();
+        gameCard.setOrientation(LinearLayout.VERTICAL);
+        gameCard.setPadding(dp(14), dp(6), dp(14), dp(12));
+        addSwitch(gameCard, "Ẩn đảo động khi chơi game", "Cần bật quyền Truy cập dữ liệu sử dụng ứng dụng bên dưới", "hide_in_game", false);
+        Button usageAccess = smallButton("CẤP QUYỀN TRUY CẬP SỬ DỤNG");
+        usageAccess.setOnClickListener(v -> {
+            try { startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); }
+            catch (Exception e) { toast("Không mở được cài đặt quyền sử dụng"); }
+        });
+        gameCard.addView(usageAccess, fullWidthTop(44, 8));
+        addSlider(gameCard, "Ngưỡng cảnh báo pin yếu", "low_battery_threshold", 5, 35, 20, "%");
+        page.addView(gameCard, fullWidthTop(-2, 8));
+
+        addSectionTitle(page, "08", "Hẹn giờ thông minh", "Đếm ngược ngay trên đảo động.");
         LinearLayout timer = card();
         timer.setOrientation(LinearLayout.VERTICAL);
         timer.setPadding(dp(14), dp(14), dp(14), dp(14));
@@ -356,6 +420,9 @@ public class MainActivity extends Activity {
                 } else {
                     toast("Quyền thông báo đã được cấp hoặc không cần hỏi lại");
                 }
+            } else if (type == 4) {
+                try { startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); }
+                catch (Exception e) { toast("Không mở được cài đặt quyền sử dụng ứng dụng"); }
             } else {
                 int count = getInstalledAppCount();
                 toast("Đã đọc được " + count + " ứng dụng trên thiết bị");
@@ -575,12 +642,22 @@ public class MainActivity extends Activity {
             ignoringBattery = pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
         }
         int appCount = getInstalledAppCount();
+        boolean usageAccess = hasUsageAccess();
         String state = "Hiển thị nổi: " + (overlay ? "ĐÃ CẤP" : "CHƯA CẤP")
                 + "  •  Thông báo: " + (listener ? "ĐÃ CẤP" : "CHƯA CẤP")
                 + "  •  Ứng dụng: " + appCount
+                + "  •  Quyền game: " + (usageAccess ? "ĐÃ CẤP" : "CHƯA CẤP")
                 + "  •  Pin: " + (ignoringBattery ? "Không hạn chế" : "Theo hệ thống");
         permissionStatus.setText(state);
         permissionStatus.setTextColor(overlay && listener ? 0xFF79DFAE : 0xFFFFC66D);
+    }
+
+    private boolean hasUsageAccess() {
+        try {
+            android.app.AppOpsManager ops = (android.app.AppOpsManager) getSystemService(Context.APP_OPS_SERVICE);
+            return ops != null && ops.checkOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                    android.os.Process.myUid(), getPackageName()) == android.app.AppOpsManager.MODE_ALLOWED;
+        } catch (Exception ignored) { return false; }
     }
 
     private void updateRunningStatus() {

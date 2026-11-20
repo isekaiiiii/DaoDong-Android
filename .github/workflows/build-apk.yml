@@ -1,4 +1,4 @@
-name: Tạo tệp APK Android
+name: Tạo APK Đảo động v3.0
 
 on:
   workflow_dispatch:
@@ -12,35 +12,41 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Lay ma nguon
+      - name: Lấy mã nguồn
         uses: actions/checkout@v4
 
-      - name: Cai Java 17
+      - name: Cài Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Cai Android SDK
+      - name: Cài Android SDK
         uses: android-actions/setup-android@v4
         with:
           packages: platform-tools
 
-      - name: Cai Android SDK Platform 35
+      - name: Cài Android SDK Platform 35
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Cai Gradle 8.9
+      - name: Cài Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Bien dich APK debug
+      - name: Giữ khóa ký debug ổn định giữa các lần build
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: dao-dong-ultra-debug-keystore-v1
+
+      - name: Biên dịch APK debug
         run: gradle --no-daemon assembleDebug
 
-      - name: Tai APK artifact
+      - name: Tải APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Dao-dong-Android-APK-v2
+          name: Dao-dong-Android-APK-v3
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14

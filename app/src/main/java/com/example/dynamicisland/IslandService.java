@@ -19,12 +19,17 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.Drawable;
+import android.animation.ObjectAnimator;
 import android.net.TrafficStats;
 import android.net.Uri;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
+import android.app.AppOpsManager;
+import android.app.usage.UsageEvents;
+import android.app.usage.UsageStatsManager;
+import android.os.Process;
 import android.os.Looper;
 import android.provider.Settings;
 import android.view.Gravity;
@@ -62,6 +67,13 @@ public class IslandService extends Service {
     private TextView mediaButton;
     private TextView previousButton;
     private TextView nextButton;
+    private TextView mediaWave;
+    private TextView batteryAlertText;
+    private TextView callStatusText;
+    private LinearLayout callActions;
+    private Button answerCallButton;
+    private Button declineCallButton;
+    private ImageView mediaArtworkView;
     private ImageView appIconView;
     private EditText replyInput;
     private Button replyButton;
@@ -72,6 +84,7 @@ public class IslandService extends Service {
     private boolean receiverRegistered = false;
     private boolean keyboardMode = false;
     private String lastIconPackage = "";
+    private String lastNotificationIconKey = "";
     private String lastCustomIconUri = "";
     private int batteryPercent = -1;
     private boolean charging = false;
@@ -82,6 +95,14 @@ public class IslandService extends Service {
     private int startWindowX;
     private int startWindowY;
     private boolean dragged;
+    private float swipeDeltaX;
+    private String lastAnimatedNotificationKey = "";
+    private long lastAutoCycleAt = 0L;
+    private boolean wasLowBattery = false;
+    private int waveformFrame = 0;
+    private boolean gameHidden = false;
+    private long lastGameCheckAt = 0L;
+    private boolean cachedGameForeground = false;
 
     private final BroadcastReceiver dataReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
@@ -214,25 +235,45 @@ public class IslandService extends Service {
         detailsText.setGravity(Gravity.CENTER_VERTICAL);
         detailsText.setMaxLines(5);
         detailsText.setLineSpacing(dp(2), 1f);
+        detailsText.setPadding(dp(10), dp(8), dp(10), dp(8));
         expandedPanel.addView(detailsText, new LinearLayout.LayoutParams(-1, -2));
+
+        batteryAlertText = makeText("", 12, Color.WHITE, true);
+        batteryAlertText.setPadding(dp(12), dp(9), dp(12), dp(9));
+        expandedPanel.addView(batteryAlertText, new LinearLayout.LayoutParams(-1, -2));
+        batteryAlertText.setVisibility(View.GONE);
+
+        LinearLayout mediaHeader = new LinearLayout(this);
+        mediaHeader.setOrientation(LinearLayout.HORIZONTAL);
+        mediaHeader.setGravity(Gravity.CENTER_VERTICAL);
+        mediaHeader.setPadding(dp(2), dp(8), dp(2), dp(2));
+        mediaArtworkView = new ImageView(this);
+        mediaArtworkView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        mediaArtworkView.setBackground(makeRoundDrawable(0xFF252938, dp(12), 0, 0));
+        mediaHeader.addView(mediaArtworkView, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        mediaHeader.addView(makeText("  ĐANG PHÁT", 10, prefs.getInt("media_color", 0xFFA680FF), true),
+                new LinearLayout.LayoutParams(0, dp(42), 1));
+        mediaHeader.setTag("media_header");
+        expandedPanel.addView(mediaHeader, new LinearLayout.LayoutParams(-1, -2));
+        mediaHeader.setVisibility(View.GONE);
 
         mediaControls = new LinearLayout(this);
         mediaControls.setOrientation(LinearLayout.HORIZONTAL);
         mediaControls.setGravity(Gravity.CENTER_VERTICAL);
         mediaControls.setPadding(0, dp(6), 0, dp(2));
-        previousButton = makeText("|◀", 15, Color.WHITE, true);
+        previousButton = makeText("⏮", 19, Color.WHITE, true);
         previousButton.setGravity(Gravity.CENTER);
         previousButton.setOnClickListener(v -> {
             IslandNotificationListener.skipToPrevious(this);
             handler.postDelayed(this::updateContent, 350);
         });
-        mediaButton = makeText("▶  /  ⏸", 12, prefs.getInt("accent_color", 0xFFA680FF), true);
+        mediaButton = makeText("▶", 19, prefs.getInt("media_color", 0xFFA680FF), true);
         mediaButton.setGravity(Gravity.CENTER);
         mediaButton.setOnClickListener(v -> {
             IslandNotificationListener.togglePlayback(this);
             handler.postDelayed(this::updateContent, 350);
         });
-        nextButton = makeText("▶|", 15, Color.WHITE, true);
+        nextButton = makeText("⏭", 19, Color.WHITE, true);
         nextButton.setGravity(Gravity.CENTER);
         nextButton.setOnClickListener(v -> {
             IslandNotificationListener.skipToNext(this);
@@ -242,6 +283,9 @@ public class IslandService extends Service {
         mediaControls.addView(mediaButton, new LinearLayout.LayoutParams(0, dp(36), 2));
         mediaControls.addView(nextButton, new LinearLayout.LayoutParams(0, dp(36), 1));
         expandedPanel.addView(mediaControls, new LinearLayout.LayoutParams(-1, -2));
+        mediaWave = makeText("▂  ▅  ▃  ▇  ▄  ▆  ▂", 15, prefs.getInt("media_color", 0xFFA680FF), true);
+        mediaWave.setGravity(Gravity.CENTER);
+        expandedPanel.addView(mediaWave, new LinearLayout.LayoutParams(-1, dp(27)));
 
         replyInput = new EditText(this);
         replyInput.setSingleLine(true);
@@ -275,6 +319,32 @@ public class IslandService extends Service {
         });
         notificationActions.addView(dismissButton, new LinearLayout.LayoutParams(-2, dp(42)));
         expandedPanel.addView(notificationActions, new LinearLayout.LayoutParams(-1, -2));
+
+        callActions = new LinearLayout(this);
+        callActions.setOrientation(LinearLayout.VERTICAL);
+        callActions.setPadding(0, dp(8), 0, dp(2));
+        callStatusText = makeText("Cuộc gọi đến", 12, Color.WHITE, true);
+        callActions.addView(callStatusText, new LinearLayout.LayoutParams(-1, dp(30)));
+        LinearLayout callButtons = new LinearLayout(this);
+        callButtons.setOrientation(LinearLayout.HORIZONTAL);
+        callButtons.setGravity(Gravity.CENTER_VERTICAL);
+        answerCallButton = actionButton("● Nghe", 0xFF20A66A);
+        answerCallButton.setOnClickListener(v -> {
+            if (IslandNotificationListener.sendCallAction(true)) {
+                callStatusText.setText("Đã nhấn nghe · " + formatCallDuration());
+                updateContent();
+            } else toast("Ứng dụng gọi không cung cấp thao tác nghe ở thông báo này");
+        });
+        declineCallButton = actionButton("✕ Tắt", 0xFFB94355);
+        declineCallButton.setOnClickListener(v -> {
+            if (!IslandNotificationListener.sendCallAction(false)) toast("Ứng dụng gọi không cung cấp thao tác từ chối ở thông báo này");
+            updateContent();
+        });
+        callButtons.addView(answerCallButton, new LinearLayout.LayoutParams(0, dp(42), 1));
+        callButtons.addView(declineCallButton, new LinearLayout.LayoutParams(0, dp(42), 1));
+        callActions.addView(callButtons, new LinearLayout.LayoutParams(-1, -2));
+        expandedPanel.addView(callActions, new LinearLayout.LayoutParams(-1, -2));
+        callActions.setVisibility(View.GONE);
 
         expandedPanel.setVisibility(View.GONE);
         islandRoot.addView(expandedPanel, new LinearLayout.LayoutParams(-1, -2));
@@ -330,23 +400,31 @@ public class IslandService extends Service {
                 startWindowX = windowParams.x;
                 startWindowY = windowParams.y;
                 dragged = false;
+                swipeDeltaX = 0f;
                 return true;
             case MotionEvent.ACTION_MOVE:
                 int dx = Math.round(event.getRawX() - lastTouchX);
                 int dy = Math.round(event.getRawY() - lastTouchY);
                 if (Math.abs(dx) > dp(5) || Math.abs(dy) > dp(5)) dragged = true;
-                if (allowDrag && dragged && windowManager != null) {
+                swipeDeltaX = dx;
+                boolean horizontalNotificationSwipe = IslandNotificationListener.getNotificationCount() > 1
+                        && Math.abs(dx) > Math.abs(dy) * 1.25f;
+                if (allowDrag && dragged && !horizontalNotificationSwipe && windowManager != null) {
                     android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
                     windowManager.getDefaultDisplay().getMetrics(metrics);
                     int maxOffsetX = Math.max(0, (metrics.widthPixels - windowParams.width) / 2);
                     int maxOffsetY = Math.max(0, metrics.heightPixels - windowParams.height);
                     windowParams.x = Math.max(-maxOffsetX, Math.min(maxOffsetX, startWindowX + dx));
-                    windowParams.y = Math.max(0, Math.min(maxOffsetY, startWindowY + dy));
+                    windowParams.y = Math.max(-dp(240), Math.min(maxOffsetY, startWindowY + dy));
                     try { windowManager.updateViewLayout(islandRoot, windowParams); } catch (Exception ignored) { }
                 }
                 return true;
             case MotionEvent.ACTION_UP:
-                if (allowDrag && dragged) {
+                if (dragged && IslandNotificationListener.getNotificationCount() > 1
+                        && Math.abs(swipeDeltaX) > dp(35)) {
+                    IslandNotificationListener.cycleNotification(swipeDeltaX < 0 ? 1 : -1);
+                    updateContent();
+                } else if (allowDrag && dragged) {
                     prefs.edit().putInt("x", Math.round(windowParams.x / getResources().getDisplayMetrics().density))
                             .putInt("y", Math.round(windowParams.y / getResources().getDisplayMetrics().density)).apply();
                 } else if (!dragged) {
@@ -389,7 +467,12 @@ public class IslandService extends Service {
 
     private void applySettings() {
         if (islandRoot == null || windowParams == null) return;
-        int width = dp(prefs.getInt("width", 235));
+        int compactWidth = dp(prefs.getInt("width", 235));
+        int expandedWidth = dp(prefs.getInt("expanded_width", 330));
+        android.util.DisplayMetrics displayMetrics = new android.util.DisplayMetrics();
+        windowManager.getDefaultDisplay().getMetrics(displayMetrics);
+        int widthLimit = Math.max(dp(180), displayMetrics.widthPixels - dp(16));
+        int width = Math.min(expanded ? expandedWidth : compactWidth, widthLimit);
         int height = dp(prefs.getInt("height", 62));
         int expandedHeight = dp(prefs.getInt("expanded_height", 260));
         windowParams.width = width;
@@ -406,11 +489,14 @@ public class IslandService extends Service {
             panelParams.height = expanded ? expandedHeight : -2;
             expandedPanel.setLayoutParams(panelParams);
         }
-        if (mediaButton != null) mediaButton.setTextColor(prefs.getInt("accent_color", 0xFFA680FF));
+        if (mediaButton != null) mediaButton.setTextColor(prefs.getInt("media_color", prefs.getInt("accent_color", 0xFFA680FF)));
+        if (mediaWave != null) mediaWave.setTextColor(prefs.getInt("media_color", prefs.getInt("accent_color", 0xFFA680FF)));
         if (replyButton != null) replyButton.setBackground(makeRoundDrawable(prefs.getInt("accent_color", 0xFFA680FF), dp(10), 0, 0));
+        lastNotificationIconKey = "";
         rebuildTopRow();
         applyBackground();
         try { windowManager.updateViewLayout(islandRoot, windowParams); } catch (Exception ignored) { }
+        updateContent();
     }
 
     private void applyBackground() {
@@ -420,16 +506,37 @@ public class IslandService extends Service {
         int textColor = prefs.getInt("text_color", Color.WHITE);
         int radius = prefs.getInt("corner_radius", 38);
         int border = prefs.getInt("border_color", prefs.getInt("accent_color", 0xFFA680FF));
+        int threshold = prefs.getInt("low_battery_threshold", 20);
+        if (batteryPercent >= 0 && batteryPercent <= threshold && !charging) border = prefs.getInt("low_battery_color", 0xFFFF5D73);
+        else if (charging) border = 0xFF65DCA5;
         int borderWidth = prefs.getInt("border_width", 1);
-        islandRoot.setBackground(makeRoundDrawable(bgColor, dp(expanded ? Math.max(18, radius - 4) : radius), border, dp(borderWidth)));
+        GradientDrawable islandDrawable = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{bgColor, blendColors(bgColor, prefs.getInt("accent_color", 0xFFA680FF), 0.10f)});
+        islandDrawable.setCornerRadius(dp(expanded ? Math.max(18, radius - 4) : radius));
+        if (borderWidth > 0) islandDrawable.setStroke(dp(borderWidth), border);
+        islandRoot.setBackground(islandDrawable);
         if (expandedPanel != null) expandedPanel.setBackground(makeRoundDrawable(panelColor, dp(20), 0x00000000, 0));
         if (compactText != null) compactText.setTextColor(textColor);
-        if (detailsText != null) detailsText.setTextColor(textColor);
+        if (detailsText != null) {
+            detailsText.setTextColor(prefs.getInt("notification_text_color", textColor));
+            detailsText.setBackground(makeRoundDrawable(prefs.getInt("notification_bg_color", 0xFF202431), dp(13), 0, 0));
+        }
         if (replyInput != null) replyInput.setTextColor(textColor);
     }
 
     private void updateContent() {
         if (islandRoot == null) return;
+        boolean hideForGame = prefs.getBoolean("hide_in_game", false) && isGameInForeground();
+        gameHidden = hideForGame;
+        islandRoot.setVisibility(hideForGame ? View.INVISIBLE : View.VISIBLE);
+        if (hideForGame) return;
+        if (IslandNotificationListener.getNotificationCount() > 1) {
+            long now = System.currentTimeMillis();
+            if (prefs.getBoolean("auto_cycle_notifications", true) && now - lastAutoCycleAt > 4200L) {
+                IslandNotificationListener.cycleNotification(1);
+                lastAutoCycleAt = now;
+            }
+        }
         boolean showMedia = prefs.getBoolean("show_media", true);
         boolean showNotif = prefs.getBoolean("show_notifications", true);
         boolean showBattery = prefs.getBoolean("show_battery", true);
@@ -444,6 +551,7 @@ public class IslandService extends Service {
         String notification = IslandNotificationListener.getLatestTitle();
         String notificationText = IslandNotificationListener.getLatestText();
         String notificationPackage = IslandNotificationListener.getLatestPackage();
+        String notificationSender = IslandNotificationListener.getLatestSender();
         String sourceAppName = resolveAppName(notificationPackage);
         String customName = prefs.getString("custom_app_name", "").trim();
         long timerEnd = prefs.getLong("timer_end", 0L);
@@ -452,12 +560,15 @@ public class IslandService extends Service {
         boolean demoActive = demoUntil > System.currentTimeMillis();
         int accent = prefs.getInt("accent_color", 0xFFA680FF);
         int textColor = prefs.getInt("text_color", Color.WHITE);
+        int lowBatteryThreshold = prefs.getInt("low_battery_threshold", 20);
+        boolean lowBattery = showBattery && batteryPercent >= 0 && batteryPercent <= lowBatteryThreshold && !charging;
 
         boolean hasNotification = showNotif && !notification.isEmpty();
         boolean hasMedia = showMedia && !media.isEmpty();
         String customIconUri = prefs.getString("custom_icon_uri", "");
         boolean hasIconPackage = showAppIcon && hasNotification
                 && (!notificationPackage.isEmpty() || !customIconUri.isEmpty());
+        String currentIconKey = IslandNotificationListener.getLatestKey();
         if (appIconView != null) {
             appIconView.setVisibility(hasIconPackage ? View.VISIBLE : View.GONE);
             if (hasIconPackage && !customIconUri.isEmpty() && !customIconUri.equals(lastCustomIconUri)) {
@@ -470,20 +581,43 @@ public class IslandService extends Service {
                 }
                 lastCustomIconUri = customIconUri;
                 lastIconPackage = notificationPackage;
-            } else if (hasIconPackage && customIconUri.isEmpty() && !notificationPackage.equals(lastIconPackage)) {
+                lastNotificationIconKey = currentIconKey;
+            } else if (hasIconPackage && customIconUri.isEmpty() && !currentIconKey.equals(lastNotificationIconKey)) {
                 try {
-                    Drawable icon = getPackageManager().getApplicationIcon(notificationPackage);
-                    appIconView.setImageDrawable(icon);
+                    android.graphics.drawable.Icon senderIcon = IslandNotificationListener.getLatestSenderIcon();
+                    if (prefs.getBoolean("prefer_sender_avatar", true) && senderIcon != null) {
+                        appIconView.setImageIcon(senderIcon);
+                    } else {
+                        Drawable icon = getPackageManager().getApplicationIcon(notificationPackage);
+                        appIconView.setImageDrawable(icon);
+                    }
                 } catch (Exception e) {
-                    appIconView.setImageResource(android.R.drawable.sym_def_app_icon);
+                    try { appIconView.setImageDrawable(getPackageManager().getApplicationIcon(notificationPackage)); }
+                    catch (Exception ignored) { appIconView.setImageResource(android.R.drawable.sym_def_app_icon); }
                 }
                 lastIconPackage = notificationPackage;
                 lastCustomIconUri = "";
+                lastNotificationIconKey = currentIconKey;
             } else if (!hasIconPackage) {
                 lastIconPackage = "";
                 lastCustomIconUri = "";
+                lastNotificationIconKey = "";
             }
             appIconView.setOnClickListener(v -> IslandNotificationListener.openLatest());
+        }
+
+        View mediaHeader = expandedPanel.findViewWithTag("media_header");
+        if (mediaHeader != null) mediaHeader.setVisibility(hasMedia ? View.VISIBLE : View.GONE);
+        Bitmap artwork = IslandNotificationListener.getMediaArtwork();
+        if (mediaArtworkView != null) {
+            if (artwork != null) mediaArtworkView.setImageBitmap(artwork);
+            else mediaArtworkView.setImageResource(android.R.drawable.ic_media_play);
+        }
+        if (mediaWave != null) {
+            String[] waves = {"▂  ▅  ▃  ▇  ▄  ▆  ▂", "▃  ▇  ▄  ▅  ▂  ▆  ▃", "▅  ▃  ▆  ▂  ▇  ▄  ▅", "▇  ▄  ▅  ▃  ▆  ▂  ▄"};
+            boolean playing = IslandNotificationListener.isMediaPlaying();
+            mediaWave.setText(playing ? waves[(waveformFrame++ % waves.length)] : "▁  ▁  ▂  ▁  ▁  ▂  ▁");
+            mediaWave.setTextColor(prefs.getInt("media_color", accent));
         }
 
         String headline = "Đảo động";
@@ -498,7 +632,8 @@ public class IslandService extends Service {
         compactText.setText(trim(headline, 42));
         compactText.setTextColor(textColor);
         rightText.setText(showBattery && batteryPercent >= 0 ? batteryPercent + "%" : "●");
-        rightText.setTextColor(charging ? 0xFF79DFAE : accent);
+        rightText.setTextColor(lowBattery ? prefs.getInt("low_battery_color", 0xFFFF5D73)
+                : (charging ? 0xFF79DFAE : accent));
 
         StringBuilder details = new StringBuilder();
         if (demoActive) details.append("Đảo động đang hoạt động\nChạm để mở rộng hoặc thu gọn. Vị trí được chỉnh trong ứng dụng.");
@@ -508,10 +643,14 @@ public class IslandService extends Service {
         }
         if (hasNotification) {
             String appPart = customName.isEmpty() ? (showAppName ? sourceAppName : "Thông báo") : customName;
-            appendLine(details, "✦  " + (appPart.isEmpty() ? "Thông báo" : appPart) + ": " + notification);
+            appendLine(details, "✦  " + (appPart.isEmpty() ? "Thông báo" : appPart) + " · " + notification);
+            if (!notificationSender.isEmpty()) appendLine(details, "Người gửi: " + notificationSender);
             if (!notificationText.isEmpty()) appendLine(details, notificationText);
+            int count = IslandNotificationListener.getNotificationCount();
+            if (count > 1) appendLine(details, "Thông báo " + (IslandNotificationListener.getSelectedNotificationIndex() + 1) + "/" + count + " · Vuốt trái/phải để chuyển");
         }
         if (showBattery && batteryPercent >= 0) appendLine(details, (charging ? "Đang sạc · " : "Pin · ") + batteryPercent + "%");
+        if (lowBattery) appendLine(details, "⚡ Pin yếu · hãy kết nối bộ sạc");
         if (showNetwork) appendLine(details, "Tốc độ tải xuống: " + currentNetworkSpeed());
         if (timerEnd > 0) {
             if (remaining == 0) {
@@ -526,7 +665,35 @@ public class IslandService extends Service {
         mediaControls.setVisibility(mediaVisibility);
         previousButton.setTextColor(textColor);
         nextButton.setTextColor(textColor);
-        mediaButton.setTextColor(accent);
+        mediaButton.setTextColor(prefs.getInt("media_color", accent));
+        mediaButton.setText(IslandNotificationListener.isMediaPlaying() ? "Ⅱ" : "▶");
+
+        batteryAlertText.setVisibility(lowBattery ? View.VISIBLE : View.GONE);
+        if (lowBattery) {
+            batteryAlertText.setText("⚡ PIN YẾU  ·  " + batteryPercent + "%  ·  Hãy kết nối bộ sạc");
+            int lowColor = prefs.getInt("low_battery_color", 0xFFFF5D73);
+            batteryAlertText.setTextColor(Color.WHITE);
+            batteryAlertText.setBackground(makeRoundDrawable(lowColor, dp(12), 0, 0));
+            if (!wasLowBattery) {
+                islandRoot.animate().cancel();
+                islandRoot.setScaleX(0.985f);
+                islandRoot.setScaleY(0.985f);
+                islandRoot.animate().scaleX(1f).scaleY(1f).setDuration(360).start();
+            }
+        }
+        wasLowBattery = lowBattery;
+
+        boolean incomingCall = prefs.getBoolean("show_calls", true) && IslandNotificationListener.isIncomingCall();
+        callActions.setVisibility(incomingCall ? View.VISIBLE : View.GONE);
+        if (incomingCall) {
+            long elapsed = IslandNotificationListener.getCallElapsedSeconds();
+            callStatusText.setText(elapsed > 0 ? "Đang gọi · " + formatSeconds(elapsed) : "Cuộc gọi đến");
+            answerCallButton.setVisibility(IslandNotificationListener.hasAnswerCallAction() ? View.VISIBLE : View.GONE);
+            declineCallButton.setVisibility(IslandNotificationListener.hasDeclineCallAction() ? View.VISIBLE : View.GONE);
+            answerCallButton.setEnabled(IslandNotificationListener.hasAnswerCallAction());
+            declineCallButton.setEnabled(IslandNotificationListener.hasDeclineCallAction());
+            callStatusText.setTextColor(prefs.getInt("call_color", 0xFF76DDAA));
+        }
 
         boolean hasReply = hasNotification && showReply && IslandNotificationListener.hasReplyAction();
         boolean hasDismiss = hasNotification && showDismiss && IslandNotificationListener.hasLatestNotification();
@@ -539,8 +706,77 @@ public class IslandService extends Service {
             replyButton.setBackground(makeRoundDrawable(accent, dp(10), 0, 0));
         }
         if (hasDismiss) dismissButton.setTextColor(textColor);
+        String currentKey = IslandNotificationListener.getLatestKey() + "|" + notification + "|" + notificationText;
+        if (!notification.isEmpty() && !currentKey.equals(lastAnimatedNotificationKey)) {
+            lastAnimatedNotificationKey = currentKey;
+            animateNotificationChange();
+        }
         rebuildTopRow();
         applyBackground();
+    }
+
+    private void animateNotificationChange() {
+        if (topRow == null || !prefs.getBoolean("animate_notifications", true)) return;
+        String effect = prefs.getString("notification_effect", "slide");
+        topRow.animate().cancel();
+        if ("fade".equals(effect)) {
+            topRow.setAlpha(0f);
+            topRow.animate().alpha(1f).setDuration(260).start();
+        } else if ("pop".equals(effect)) {
+            topRow.setScaleX(0.88f);
+            topRow.setScaleY(0.88f);
+            topRow.animate().scaleX(1f).scaleY(1f).setDuration(280).start();
+        } else {
+            int direction = (IslandNotificationListener.getSelectedNotificationIndex() % 2 == 0) ? 1 : -1;
+            topRow.setTranslationX(dp(34 * direction));
+            topRow.setAlpha(0.55f);
+            topRow.animate().translationX(0f).alpha(1f).setDuration(320).start();
+        }
+    }
+
+    private String formatCallDuration() {
+        return formatSeconds(IslandNotificationListener.getCallElapsedSeconds());
+    }
+
+    private String formatSeconds(long seconds) {
+        long m = seconds / 60L;
+        long s = seconds % 60L;
+        long h = m / 60L;
+        m %= 60L;
+        return h > 0 ? String.format(Locale.getDefault(), "%02d:%02d:%02d", h, m, s)
+                : String.format(Locale.getDefault(), "%02d:%02d", m, s);
+    }
+
+    private boolean isGameInForeground() {
+        long nowCheck = System.currentTimeMillis();
+        if (nowCheck - lastGameCheckAt < 5000L) return cachedGameForeground;
+        lastGameCheckAt = nowCheck;
+        try {
+            AppOpsManager appOps = (AppOpsManager) getSystemService(APP_OPS_SERVICE);
+            int mode = appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), getPackageName());
+            if (mode != AppOpsManager.MODE_ALLOWED) return false;
+            UsageStatsManager manager = (UsageStatsManager) getSystemService(USAGE_STATS_SERVICE);
+            if (manager == null) return false;
+            long now = System.currentTimeMillis();
+            UsageEvents events = manager.queryEvents(now - 60L * 60L * 1000L, now);
+            UsageEvents.Event event = new UsageEvents.Event();
+            String foregroundPackage = "";
+            while (events != null && events.hasNextEvent()) {
+                events.getNextEvent(event);
+                int type = event.getEventType();
+                boolean foreground = type == UsageEvents.Event.MOVE_TO_FOREGROUND;
+                if (Build.VERSION.SDK_INT >= 29) foreground = foreground || type == UsageEvents.Event.ACTIVITY_RESUMED;
+                boolean background = type == UsageEvents.Event.MOVE_TO_BACKGROUND;
+                if (Build.VERSION.SDK_INT >= 29) background = background || type == UsageEvents.Event.ACTIVITY_PAUSED
+                        || type == UsageEvents.Event.ACTIVITY_STOPPED;
+                if (foreground) foregroundPackage = event.getPackageName();
+                else if (background && event.getPackageName().equals(foregroundPackage)) foregroundPackage = "";
+            }
+            if (foregroundPackage.isEmpty() || foregroundPackage.equals(getPackageName())) return false;
+            android.content.pm.ApplicationInfo info = getPackageManager().getApplicationInfo(foregroundPackage, 0);
+            cachedGameForeground = Build.VERSION.SDK_INT >= 26 && info.category == android.content.pm.ApplicationInfo.CATEGORY_GAME;
+            return cachedGameForeground;
+        } catch (Exception ignored) { cachedGameForeground = false; return false; }
     }
 
     private String resolveAppName(String packageName) {
@@ -606,6 +842,14 @@ public class IslandService extends Service {
         button.setPadding(dp(8), 0, dp(8), 0);
         button.setBackground(makeRoundDrawable(color, dp(10), 0, 0));
         return button;
+    }
+
+    private int blendColors(int base, int overlay, float ratio) {
+        float inverse = 1f - ratio;
+        int r = Math.round(Color.red(base) * inverse + Color.red(overlay) * ratio);
+        int g = Math.round(Color.green(base) * inverse + Color.green(overlay) * ratio);
+        int b = Math.round(Color.blue(base) * inverse + Color.blue(overlay) * ratio);
+        return Color.rgb(r, g, b);
     }
 
     private GradientDrawable makeRoundDrawable(int fill, int radius, int stroke, int strokeWidth) {

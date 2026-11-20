@@ -7,11 +7,12 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
 
     <application
         android:allowBackup="false"
         android:icon="@drawable/ic_launcher"
-        android:label="Đảo động"
+        android:label="Đảo động Ultra"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
