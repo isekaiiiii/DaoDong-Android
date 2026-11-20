@@ -54,3 +54,12 @@ Workflow `.github/workflows/build-ayane.yml` tự chạy khi push lên nhánh `m
 ## Nguồn gốc và giấy phép
 
 Mã nguồn nền được lấy từ ZIP `droidtools-main.zip` người dùng cung cấp, dự án gốc: https://github.com/Velocity081/droidtools. README dự án gốc tuyên bố MIT, nhưng gói ZIP không chứa tệp `LICENSE` và đường dẫn LICENSE ở repository trả về 404 khi rà soát. Vì vậy không tự gắn giấy phép MIT cho bản Ayane; hãy xác minh với tác giả trước khi công khai phân phối hoặc thương mại hóa. Giữ ghi công nguồn gốc khi sử dụng.
+
+
+## Khắc phục lỗi ứng dụng tự thoát khi mở (1.0.1)
+
+Bản 1.0.1 không tự khởi động cửa sổ nổi ngay trong `MainActivity.onCreate()` hoặc khi Activity quay lại `onResume()`. Người dùng mở Ayane trước, cấp quyền cần thiết, sau đó bật công tắc **Bật đảo động** trong giao diện. Mặc định cài mới để đảo động tắt cho đến khi người dùng chủ động bật.
+
+Việc này cô lập lỗi khởi chạy giao diện chính khỏi dịch vụ overlay/foreground service. Dịch vụ được bọc xử lý lỗi khởi tạo và `onStartCommand`; nếu không thể khởi động, Ayane ghi log `AyaneOverlay` và dừng dịch vụ thay vì chủ động khởi chạy lặp lại khi mở ứng dụng.
+
+Nếu ứng dụng vẫn tự thoát, hãy lấy logcat có dòng `FATAL EXCEPTION` và `Process: com.ayane.blossom`; bản vá an toàn không thay thế logcat trên thiết bị thật.

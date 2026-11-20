@@ -1,8 +1,6 @@
 package com.ayane.dynamicisland
 
-import android.content.pm.PackageManager
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -11,17 +9,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.ayane.dynamicisland.data.SettingsRepository
-import com.ayane.dynamicisland.service.IslandOverlayService
 import com.ayane.dynamicisland.theme.AyaneTheme
 import com.ayane.dynamicisland.ui.main.MainScreen
 import com.ayane.dynamicisland.ui.main.MainScreenViewModel
-import com.ayane.dynamicisland.ui.main.PermissionHelper
 import android.content.Intent
 class MainActivity : ComponentActivity() {
 
@@ -40,10 +33,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Keep the launcher screen independent from overlay/foreground-service startup.
+        // The user starts the island explicitly with the in-app switch after granting permissions.
         viewModel.checkPermissions(this)
-        if (PermissionHelper.isOverlayGranted(this)) {
-            IslandOverlayService.start(this)
-        }
         if (intent.getBooleanExtra("EXTRA_SHOW_UPDATE", false)) {
             viewModel.checkForUpdates(this)
         }
@@ -71,9 +63,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Keep the launcher screen independent from overlay/foreground-service startup.
+        // The user starts the island explicitly with the in-app switch after granting permissions.
         viewModel.checkPermissions(this)
-        if (PermissionHelper.isOverlayGranted(this)) {
-            IslandOverlayService.start(this)
-        }
+        viewModel.refreshUpdateStateOnResume(this)
     }
 }

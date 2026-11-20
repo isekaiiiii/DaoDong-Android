@@ -27,7 +27,7 @@ enum class DesignLanguage(val id: String, val displayName: String) {
 }
 
 data class IslandSettings(
-    val isEnabled: Boolean = true,
+    val isEnabled: Boolean = false,
     val widthDp: Int = 180,
     val heightDp: Int = 36,
     val cornerRadiusDp: Int = 22,

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ayane.dynamicisland.data.SettingsRepository
@@ -126,11 +127,33 @@ class MainScreenViewModel(private val repository: SettingsRepository) : ViewMode
 
     fun toggleEnabled(context: Context, enabled: Boolean) {
         viewModelScope.launch {
-            repository.updateSettings { it.copy(isEnabled = enabled) }
-            if (enabled && PermissionHelper.isOverlayGranted(context)) {
-                IslandOverlayService.start(context)
-            } else {
-                IslandOverlayService.stop(context)
+            if (enabled && !PermissionHelper.isOverlayGranted(context)) {
+                Toast.makeText(
+                    context,
+                    "Vui lòng cấp quyền Hiển thị trên ứng dụng khác trước.",
+                    Toast.LENGTH_LONG
+                ).show()
+                checkPermissions(context)
+                return@launch
+            }
+
+            if (!enabled) {
+                repository.updateSettings { it.copy(isEnabled = false) }
+                runCatching { IslandOverlayService.stop(context) }
+                return@launch
+            }
+
+            // Persist the enabled state before service creation so the service reads
+            // the correct settings during onCreate().
+            repository.updateSettings { it.copy(isEnabled = true) }
+            val started = IslandOverlayService.start(context)
+            if (!started) {
+                repository.updateSettings { it.copy(isEnabled = false) }
+                Toast.makeText(
+                    context,
+                    "Ayane chưa thể khởi động. Hãy kiểm tra quyền hiển thị nổi và thử lại.",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }

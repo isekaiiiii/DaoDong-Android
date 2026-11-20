@@ -402,11 +402,10 @@ fun MainScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                // Refresh permission state when returning from Android settings.
+                // Do not auto-start the overlay while the launcher UI is resuming.
                 viewModel.checkPermissions(context)
                 viewModel.refreshUpdateStateOnResume(context)
-                if ((settings.isEnabled || settings.droidbarEnabled) && PermissionHelper.isOverlayGranted(context)) {
-                    IslandOverlayService.start(context)
-                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

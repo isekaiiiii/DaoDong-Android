@@ -17,7 +17,7 @@ class BootReceiver : BroadcastReceiver() {
             CoroutineScope(Dispatchers.IO).launch {
                 val settings = repository.settingsFlow.first()
                 if (settings.isEnabled && settings.restartOnBoot && Settings.canDrawOverlays(context)) {
-                    IslandOverlayService.start(context)
+                    runCatching { IslandOverlayService.start(context.applicationContext) }
                 }
             }
         }

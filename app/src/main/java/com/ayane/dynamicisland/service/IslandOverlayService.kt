@@ -88,22 +88,31 @@ class IslandOverlayService : Service() {
             serviceInstance?.handleAccessibilityServiceChanged(accessibilityService)
         }
 
-        fun start(context: Context) {
-            val intent = Intent(context, IslandOverlayService::class.java).apply {
+        fun start(context: Context): Boolean {
+            val appContext = context.applicationContext
+            if (!Settings.canDrawOverlays(appContext)) {
+                Log.w("AyaneOverlay", "Overlay permission is not granted; service start skipped")
+                return false
+            }
+            val intent = Intent(appContext, IslandOverlayService::class.java).apply {
                 action = ACTION_START
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            return try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    appContext.startForegroundService(intent)
+                } else {
+                    appContext.startService(intent)
+                }
+                true
+            } catch (error: Exception) {
+                Log.e("AyaneOverlay", "Unable to request overlay service start", error)
+                false
             }
         }
 
         fun stop(context: Context) {
-            val intent = Intent(context, IslandOverlayService::class.java).apply {
-                action = ACTION_STOP
-            }
-            context.startService(intent)
+            val intent = Intent(context.applicationContext, IslandOverlayService::class.java)
+            runCatching { context.applicationContext.stopService(intent) }
         }
     }
 
@@ -115,6 +124,7 @@ class IslandOverlayService : Service() {
     private var droidbarView: ComposeView? = null
     private var droidbarParams: WindowManager.LayoutParams? = null
     private var isDroidbarExpanded: Boolean = false
+    private var initializationFailed: Boolean = false
 
     private val lifecycleOwner = CustomLifecycleOwner()
     private var currentSettings = IslandSettings()
@@ -462,6 +472,7 @@ class IslandOverlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        try {
         serviceInstance = this
         settingsRepository = SettingsRepository(this)
         currentSettings = runBlocking(Dispatchers.IO) {
@@ -547,25 +558,42 @@ class IslandOverlayService : Service() {
         try {
             lastAirplaneModeState = Settings.Global.getInt(contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) != 0
         } catch (_: Exception) {}
+        } catch (error: Exception) {
+            initializationFailed = true
+            Log.e("AyaneOverlay", "Unable to initialize overlay service", error)
+            runCatching { stopSelf() }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
-            removeOverlay()
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+        if (initializationFailed) {
+            stopSelf(startId)
             return START_NOT_STICKY
         }
 
-        startForegroundService()
-
-        if (Settings.canDrawOverlays(this)) {
-            initOverlay()
-        } else {
-            stopSelf()
+        if (intent?.action == ACTION_STOP) {
+            runCatching { removeOverlay() }
+            runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
+            stopSelf(startId)
+            return START_NOT_STICKY
         }
 
-        return START_STICKY
+        return try {
+            startForegroundService()
+            if (Settings.canDrawOverlays(this)) {
+                initOverlay()
+            } else {
+                stopSelf(startId)
+                return START_NOT_STICKY
+            }
+            START_STICKY
+        } catch (error: Exception) {
+            Log.e("AyaneOverlay", "Overlay start failed; service stopped safely", error)
+            runCatching { removeOverlay() }
+            runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
+            stopSelf(startId)
+            START_NOT_STICKY
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -1171,18 +1199,18 @@ override fun onDestroy() {
             serviceInstance = null
         }
         runCatching { unregisterReceiver(debugReceiver) }
-        persistentTelemetryManager?.stop()
+        runCatching { persistentTelemetryManager?.stop() }
         persistentTelemetryManager = null
         runCatching { unregisterReceiver(powerReceiver) }
         torchCallback?.let { cb ->
             runCatching { cameraManager?.unregisterTorchCallback(cb) }
         }
         torchCallback = null
-        lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-        lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
-        lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
-        removeOverlay()
-        serviceScope.cancel()
+        runCatching { lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE) }
+        runCatching { lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_STOP) }
+        runCatching { lifecycleOwner.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY) }
+        runCatching { removeOverlay() }
+        runCatching { serviceScope.cancel() }
     }
 
 
