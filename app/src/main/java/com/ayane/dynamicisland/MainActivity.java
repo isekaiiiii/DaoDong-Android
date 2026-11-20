@@ -27,6 +27,7 @@ import android.content.Context;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.ScrollView;
@@ -45,10 +46,10 @@ import java.util.Set;
 
 public class MainActivity extends Activity {
     private static final String PREFS = "island_settings";
-    private static final int PURPLE = Color.rgb(166, 128, 255);
+    private static final int PURPLE = Color.rgb(214, 163, 255);
     private static final int BLUE = Color.rgb(91, 170, 255);
     private static final int GREEN = Color.rgb(93, 220, 167);
-    private static final int PINK = Color.rgb(255, 126, 183);
+    private static final int PINK = Color.rgb(255, 164, 205);
     private static final int GOLD = Color.rgb(255, 195, 105);
     private static final int PICK_ISLAND_ICON = 42;
     private static final int PICK_SHORTCUT_ICON = 43;
@@ -90,23 +91,33 @@ public class MainActivity extends Activity {
         page.setPadding(dp(18), dp(22), dp(18), dp(38));
         scroll.addView(page);
 
-        TextView eyebrow = text("AYANE  /  DYNAMIC ISLAND", 10, accent, true);
-        eyebrow.setLetterSpacing(0.16f);
-        page.addView(eyebrow);
-
-        LinearLayout titleRow = row();
-        TextView title = text("Ayane", 32, Color.WHITE, true);
-        titleRow.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView version = text("ULTIMATE 2.2", 10, 0xFFD9CEFF, true);
-        version.setPadding(dp(11), dp(7), dp(11), dp(7));
-        version.setBackground(roundRect(0x332A2540, dp(30), 0x775A4C7E, dp(1)));
-        titleRow.addView(version);
-        addTop(page, titleRow, 3);
-        addTop(page, text("Premium island experience  •  Notification intelligence", 13, 0xFFAAAEBB, false), 4);
+        LinearLayout brandRow = row();
+        brandRow.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView brandIcon = new ImageView(this);
+        brandIcon.setImageResource(R.mipmap.ic_launcher);
+        brandIcon.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        brandIcon.setBackground(roundRect(0xFF171323, dp(17), 0x66DDA7FF, dp(1)));
+        brandIcon.setClipToOutline(true);
+        brandRow.addView(brandIcon, new LinearLayout.LayoutParams(dp(54), dp(54)));
+        LinearLayout brandLabels = new LinearLayout(this);
+        brandLabels.setOrientation(LinearLayout.VERTICAL);
+        brandLabels.setPadding(dp(12), 0, 0, 0);
+        TextView eyebrow = text("AYANE BLOSSOM  ·  ĐẢO ĐỘNG", 9, accent, true);
+        eyebrow.setLetterSpacing(0.10f);
+        brandLabels.addView(eyebrow);
+        TextView title = text("Ayane", 29, Color.WHITE, true);
+        brandLabels.addView(title, fullWidthTop(-2, 1));
+        brandRow.addView(brandLabels, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView version = text("CAO CẤP 2.4", 9, 0xFFF0D9FF, true);
+        version.setPadding(dp(10), dp(7), dp(10), dp(7));
+        version.setBackground(roundRect(0x332C1E3E, dp(30), 0x88C58CFF, dp(1)));
+        brandRow.addView(version);
+        addTop(page, brandRow, 2);
+        addTop(page, text("Đảo động mượt mà · riêng tư · cá nhân hóa", 12, 0xFFB8B2C6, false), 8);
 
         LinearLayout hero = card();
         GradientDrawable heroGradient = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{0xFF30245A, 0xFF191A2B, 0xFF121520});
+                new int[]{0xFF492847, 0xFF241B35, 0xFF10131E});
         heroGradient.setCornerRadius(dp(24));
         heroGradient.setStroke(dp(1), 0x775D4C8F);
         hero.setBackground(heroGradient);
@@ -122,7 +133,7 @@ public class MainActivity extends Activity {
         LinearLayout previewArea = new LinearLayout(this);
         previewArea.setGravity(Gravity.CENTER);
         previewArea.setPadding(0, dp(22), 0, dp(18));
-        TextView previewPill = text("◉   Đang phát   ᴗ", 13, Color.WHITE, true);
+        TextView previewPill = text("✿   AYANE  ·  Đang phát   ᴗ", 13, Color.WHITE, true);
         previewPill.setGravity(Gravity.CENTER);
         previewPill.setPadding(dp(28), dp(14), dp(28), dp(14));
         previewPill.setBackground(roundRect(prefs.getInt("island_bg_color", 0xE605070E), dp(70),
@@ -150,7 +161,7 @@ public class MainActivity extends Activity {
         permissions.setPadding(dp(14), dp(8), dp(14), dp(12));
         addPermissionRow(permissions, "Cho phép Ayane hiển thị nổi & thao tác trên màn hình", "Mở Quyền truy cập đặc biệt → Hiển thị trên ứng dụng khác → bật Cho phép hiển thị trên ứng dụng khác cho Ayane. Không cần bật Trợ năng.", 0);
         addDivider(permissions);
-        addPermissionRow(permissions, "Truy cập thông báo", "Cho phép Ayane nhận từng thông báo, icon ứng dụng, tên người gửi và nút trả lời nếu ứng dụng nguồn hỗ trợ", 1);
+        addPermissionRow(permissions, "Truy cập thông báo", "Cho phép Ayane nhận từng thông báo, biểu tượng ứng dụng, tên người gửi và nút trả lời nếu ứng dụng nguồn hỗ trợ", 1);
         addDivider(permissions);
         addPermissionRow(permissions, "Thông báo dịch vụ nền", "Cho Android biết đảo động đang hoạt động", 2);
         addDivider(permissions);
@@ -162,7 +173,7 @@ public class MainActivity extends Activity {
         permissions.addView(battery, fullWidthTop(44, 10));
         page.addView(permissions, fullWidthTop(-2, 8));
 
-        addSectionTitle(page, "02", "Kích thước, vị trí & hiệu ứng", "Chỉnh riêng kích thước thu gọn / mở rộng, căn dọc âm-dương và hiệu ứng kính.");
+        addSectionTitle(page, "02", "Kích thước, vị trí & chuyển động", "Tinh chỉnh vùng đảo, hiệu ứng nảy và cảm giác chạm theo phong cách Ayane.");
         LinearLayout dimensions = card();
         dimensions.setOrientation(LinearLayout.VERTICAL);
         dimensions.setPadding(dp(15), dp(12), dp(15), dp(14));
@@ -196,6 +207,7 @@ public class MainActivity extends Activity {
             option.setText(animationNames[i]);
             option.setTextSize(11);
             option.setTextColor(Color.WHITE);
+            option.setTypeface(AyaneTypography.resolve(this, false));
             option.setButtonTintList(android.content.res.ColorStateList.valueOf(accent));
             option.setId(100 + i);
             animationGroup.addView(option);
@@ -209,6 +221,37 @@ public class MainActivity extends Activity {
         addSlider(dimensions, "Tốc độ hiệu ứng", "animation_duration", 120, 900, 320, " ms");
         addSwitch(dimensions, "Hiệu ứng kính trong suốt", "Dùng blur nền trên thiết bị hỗ trợ Android 12+", "glass_effect", true);
         addSlider(dimensions, "Độ mờ kính", "glass_blur", 0, 80, 26, " px");
+        addDivider(dimensions);
+        addSwitch(dimensions, "Thu gọn khi không có hoạt động", "Khi rảnh, đảo chuyển thành viên thuốc nhỏ gọn ở vùng camera", "idle_compact", true);
+        addSlider(dimensions, "Chiều rộng khi ở trạng thái chờ", "idle_width", 72, 180, 104, " dp");
+        addSlider(dimensions, "Chiều cao khi ở trạng thái chờ", "idle_height", 32, 72, 42, " dp");
+        addSlider(dimensions, "Độ nảy khi chuyển cảnh", "spring_tension", 4, 22, 12, " / 10");
+        addSwitch(dimensions, "Rung phản hồi nhẹ", "Rung nhẹ khi tương tác hoặc có hoạt động mới; dùng phản hồi xúc giác của Android", "haptic_feedback", true);
+        TextView fontLabel = text("Kiểu chữ trên đảo động", 12, 0xFFE8E8F0, true);
+        dimensions.addView(fontLabel, fullWidthTop(-2, 9));
+        RadioGroup fontGroup = new RadioGroup(this);
+        fontGroup.setOrientation(RadioGroup.HORIZONTAL);
+        String[] fontNames = {"Bo tròn", "Hiện đại", "Gọn"};
+        String[] fontKeys = {"rounded", "modern", "compact"};
+        String currentFont = prefs.getString("font_family", "rounded");
+        for (int i = 0; i < fontNames.length; i++) {
+            RadioButton option = new RadioButton(this);
+            option.setText(fontNames[i]);
+            option.setTextSize(11);
+            option.setTextColor(Color.WHITE);
+            option.setTypeface(AyaneTypography.resolve(this, false));
+            option.setButtonTintList(android.content.res.ColorStateList.valueOf(accent));
+            option.setId(300 + i);
+            fontGroup.addView(option);
+            if (fontKeys[i].equals(currentFont)) fontGroup.check(option.getId());
+        }
+        fontGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            int index = Math.max(0, Math.min(2, checkedId - 300));
+            prefs.edit().putString("font_family", fontKeys[index]).apply();
+            refreshIsland();
+            buildScreen();
+        });
+        dimensions.addView(fontGroup, fullWidthTop(-2, 2));
         page.addView(dimensions, fullWidthTop(-2, 8));
 
         addSectionTitle(page, "03", "Bộ màu giao diện", "Chọn màu mẫu hoặc tự nhập mã HEX cho từng thành phần.");
@@ -296,7 +339,7 @@ public class MainActivity extends Activity {
         });
         appCard.addView(saveBrandName, fullWidthTop(44, 8));
 
-        EditText customName = input("Tên thay thế cho app gửi thông báo (tùy chọn)");
+        EditText customName = input("Tên thay thế cho ứng dụng gửi thông báo (tùy chọn)");
         customName.setText(prefs.getString("custom_app_name", ""));
         appCard.addView(customName, fullWidthTop(50, 8));
         Button saveName = outlineButton("LƯU TÊN ỨNG DỤNG NGUỒN");
@@ -314,14 +357,14 @@ public class MainActivity extends Activity {
         resetIcon.setOnClickListener(v -> {
             prefs.edit().remove("custom_icon_uri").apply();
             refreshIsland();
-            toast("Đã khôi phục icon ứng dụng gốc");
+            toast("Đã khôi phục biểu tượng ứng dụng gốc");
         });
         appCard.addView(resetIcon, fullWidthTop(42, 7));
-        addSwitch(appCard, "Hiển thị icon ứng dụng", "Dùng icon gốc hoặc ảnh tùy chỉnh ở trên", "show_source_icon", true);
+        addSwitch(appCard, "Hiển thị biểu tượng ứng dụng", "Dùng icon gốc hoặc ảnh tùy chỉnh ở trên", "show_source_icon", true);
         addDivider(appCard);
         addSwitch(appCard, "Hiển thị tên ứng dụng", "Hiện tên ứng dụng cạnh nội dung", "show_source_app_name", true);
         addDivider(appCard);
-        TextView sideLabel = text("Vị trí icon ứng dụng", 12, 0xFFE8E8F0, true);
+        TextView sideLabel = text("Vị trí biểu tượng ứng dụng", 12, 0xFFE8E8F0, true);
         appCard.addView(sideLabel, fullWidthTop(-2, 10));
         RadioGroup iconSide = new RadioGroup(this);
         iconSide.setOrientation(RadioGroup.HORIZONTAL);
@@ -366,7 +409,7 @@ public class MainActivity extends Activity {
         Button resetShortcutIcon = outlineButton("DÙNG ICON AYANE MẶC ĐỊNH");
         resetShortcutIcon.setOnClickListener(v -> {
             prefs.edit().remove("home_shortcut_icon_uri").apply();
-            toast("Đã chọn lại icon Ayane mặc định");
+            toast("Đã chọn lại biểu tượng Ayane mặc định");
         });
         appCard.addView(resetShortcutIcon, fullWidthTop(40, 7));
         Button createShortcut = button("TẠO BIỂU TƯỢNG TRÊN MÀN HÌNH CHÍNH", accent);
@@ -405,17 +448,45 @@ public class MainActivity extends Activity {
         addDivider(features);
         addSwitch(features, "Hiện tên người gửi", "Đọc tên người gửi nếu ứng dụng nguồn cung cấp", "show_sender_name", true);
         addDivider(features);
-        addSwitch(features, "Hiện avatar người gửi", "Lấy ảnh người gửi từ thông báo hội thoại nếu có; nếu thiếu sẽ dùng icon app", "show_sender_avatar", true);
+        addSwitch(features, "Hiện avatar người gửi", "Lấy ảnh người gửi từ thông báo hội thoại nếu có; nếu thiếu sẽ dùng biểu tượng ứng dụng", "show_sender_avatar", true);
         addDivider(features);
         addSwitch(features, "Hiện thông báo đang chạy", "Bao gồm một số thông báo cuộc gọi / hoạt động liên tục", "show_ongoing_notifications", true);
         addDivider(features);
-        addSwitch(features, "Trình phát nhạc riêng", "Hiện một thẻ nhạc độc lập, có thể kéo tới vị trí bất kỳ", "show_media", true);
+        addSwitch(features, "Trình phát nhạc / video riêng", "Hiện thẻ nội dung đang phát độc lập, có thể kéo tới vị trí bất kỳ", "show_media", true);
         addDivider(features);
-        addSwitch(features, "Thẻ nhạc nổi", "Bật/tắt trình phát nhạc nổi riêng, tách khỏi thông báo", "floating_media_card", true);
+        addSwitch(features, "Thẻ phát nổi", "Bật/tắt trình phát nhạc hoặc video nổi riêng, tách khỏi thông báo", "floating_media_card", true);
         addSlider(features, "Vị trí ngang thẻ nhạc", "media_floating_x", 0, 420, 12, " dp");
         addSlider(features, "Vị trí dọc thẻ nhạc", "media_floating_y", 24, 900, 650, " dp");
         addDivider(features);
         addSwitch(features, "Tự tránh chồng lấp", "Tự tìm vị trí trống cho thẻ nhạc khi gần thẻ thông báo", "auto_avoid_overlap", true);
+        addDivider(features);
+        addSwitch(features, "Trình phát nhạc / video mở rộng", "Hiển thị ảnh bìa, tên nội dung, nút điều khiển và thanh tiến trình khi ứng dụng phát cung cấp thông tin đa phương tiện", "expanded_media_card_enabled", true);
+        addDivider(features);
+        addSwitch(features, "Nền album mờ theo ảnh bìa", "Tạo lớp nền chuyển sắc và làm mờ ảnh bìa trên Android 12 trở lên", "media_blur_enabled", true);
+        addSlider(features, "Mức làm mờ nền album", "media_blur_radius", 0, 48, 22, " px");
+        TextView mediaOrderLabel = text("Thứ tự lớp trình phát", 12, 0xFFE8E8F0, true);
+        features.addView(mediaOrderLabel, fullWidthTop(-2, 8));
+        RadioGroup mediaOrder = new RadioGroup(this);
+        mediaOrder.setOrientation(RadioGroup.HORIZONTAL);
+        RadioButton controlsFirst = new RadioButton(this);
+        controlsFirst.setText("Điều khiển trước"); controlsFirst.setTextColor(Color.WHITE);
+        controlsFirst.setButtonTintList(android.content.res.ColorStateList.valueOf(accent)); controlsFirst.setId(401);
+        RadioButton progressFirst = new RadioButton(this);
+        progressFirst.setText("Tiến trình trước"); progressFirst.setTextColor(Color.WHITE);
+        progressFirst.setButtonTintList(android.content.res.ColorStateList.valueOf(accent)); progressFirst.setId(402);
+        mediaOrder.addView(controlsFirst); mediaOrder.addView(progressFirst);
+        mediaOrder.check(prefs.getInt("media_layout_order", 0) == 1 ? 402 : 401);
+        mediaOrder.setOnCheckedChangeListener((group, checkedId) -> {
+            prefs.edit().putInt("media_layout_order", checkedId == 402 ? 1 : 0).apply();
+            refreshIsland();
+        });
+        features.addView(mediaOrder);
+        addDivider(features);
+        addSwitch(features, "Hẹn giờ và báo thức nổi", "Nhận trạng thái đồng hồ từ thông báo hệ thống nếu ứng dụng Đồng hồ có gửi dữ liệu", "show_timer_activity", true);
+        addDivider(features);
+        addSwitch(features, "Giao diện cuộc gọi đến", "Hiện tên và ảnh người gọi; chỉ hiện nút nghe / từ chối khi ứng dụng gọi cung cấp thao tác", "show_call_activity", true);
+        addDivider(features);
+        addSwitch(features, "Thông tin sạc trực tiếp", "Chỉ hiện khi đang cắm sạc; thanh gọn không hiện phần trăm, chạm để xem pin, thời gian còn lại, điện áp, dòng, nhiệt độ và công suất nếu máy hỗ trợ", "show_charging_stats", true);
         page.addView(features, fullWidthTop(-2, 8));
         Button appFilter = outlineButton("CHỌN ỨNG DỤNG ĐƯỢC PHÉP GỬI THÔNG BÁO");
         appFilter.setOnClickListener(v -> showAppFilterDialog());
@@ -429,14 +500,14 @@ public class MainActivity extends Activity {
         background.setPadding(dp(14), dp(6), dp(14), dp(10));
         addSwitch(background, "Tự bật sau khi khởi động máy", "Yêu cầu quyền hiển thị nổi đã được cấp", "auto_start", true);
         addDivider(background);
-        addSwitch(background, "Cho phép kéo đảo động", "Mặc định tắt: khi ra ngoài app chỉ chạm để mở / thu gọn", "allow_drag", false);
+        addSwitch(background, "Cho phép kéo đảo động", "Giữ và kéo viên đảo đến vị trí mong muốn trên mọi màn hình sau khi cấp quyền hiển thị nổi", "allow_drag", true);
         addDivider(background);
         TextView note = text("Dịch vụ nền dùng thông báo thường trực. Android hoặc chế độ tiết kiệm pin của hãng vẫn có thể dừng ứng dụng; không ứng dụng bên thứ ba nào bảo đảm chạy tuyệt đối 24/7.", 10, 0xFFFFC783, false);
         note.setLineSpacing(dp(3), 1f);
         background.addView(note, fullWidthTop(-2, 10));
         page.addView(background, fullWidthTop(-2, 8));
 
-        addSectionTitle(page, "07", "Hẹn giờ thông minh", "Đếm ngược ngay trên đảo động.");
+        addSectionTitle(page, "07", "Hẹn giờ thông minh", "Bộ đếm của Ayane và trạng thái hẹn giờ / báo thức từ thông báo Đồng hồ.");
         LinearLayout timer = card();
         timer.setOrientation(LinearLayout.VERTICAL);
         timer.setPadding(dp(14), dp(14), dp(14), dp(14));
@@ -661,6 +732,7 @@ public class MainActivity extends Activity {
         labels.addView(text(subtitle, 10, 0xFF9999A7, false), fullWidthTop(-2, 3));
         r.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
         Switch toggle = new Switch(this);
+        toggle.setTypeface(AyaneTypography.resolve(this, false));
         toggle.setThumbTintList(android.content.res.ColorStateList.valueOf(accent));
         toggle.setTrackTintList(android.content.res.ColorStateList.valueOf((accent & 0x00FFFFFF) | 0x55000000));
         toggle.setChecked(prefs.getBoolean(key, defaultValue));
@@ -689,6 +761,7 @@ public class MainActivity extends Activity {
         e.setHintTextColor(0xFF777D8D);
         e.setTextColor(Color.WHITE);
         e.setTextSize(13);
+        e.setTypeface(AyaneTypography.resolve(this, false));
         e.setPadding(dp(12), 0, dp(12), 0);
         e.setBackground(roundRect(0xFF20232E, dp(12), 0xFF393D4A, dp(1)));
         return e;
@@ -730,7 +803,7 @@ public class MainActivity extends Activity {
         if (!IslandNotificationListener.isEnabled(this)) {
             new AlertDialog.Builder(this)
                     .setTitle("Bật quyền thông báo")
-                    .setMessage("Để Ayane nhận từng thông báo, hiện icon/tên người gửi và cung cấp nút trả lời nhanh, hãy bật quyền Truy cập thông báo cho Ayane.")
+                    .setMessage("Để Ayane nhận từng thông báo, hiện biểu tượng/tên người gửi và cung cấp nút trả lời nhanh, hãy bật quyền Truy cập thông báo cho Ayane.")
                     .setPositiveButton("MỞ CÀI ĐẶT", (dialog, which) -> startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)))
                     .setNegativeButton("CHẠY KHÔNG CÓ THÔNG BÁO", (dialog, which) -> startIslandService())
                     .show();
@@ -802,10 +875,10 @@ public class MainActivity extends Activity {
         if (requestCode == PICK_ISLAND_ICON) {
             prefs.edit().putString("custom_icon_uri", uri.toString()).apply();
             refreshIsland();
-            toast("Đã lưu icon thông báo tùy chỉnh");
+            toast("Đã lưu biểu tượng thông báo tùy chỉnh");
         } else if (requestCode == PICK_SHORTCUT_ICON) {
             prefs.edit().putString("home_shortcut_icon_uri", uri.toString()).apply();
-            toast("Đã lưu ảnh icon Ayane. Nhấn Tạo biểu tượng để ghim lên màn hình chính.");
+            toast("Đã lưu ảnh biểu tượng Ayane. Nhấn Tạo biểu tượng để ghim lên màn hình chính.");
         }
     }
 
@@ -824,7 +897,7 @@ public class MainActivity extends Activity {
         if (label.isEmpty()) label = "Ayane";
         if (label.length() > 25) label = label.substring(0, 25);
 
-        Icon icon = Icon.createWithResource(this, R.drawable.ic_ayane);
+        Icon icon = Icon.createWithResource(this, R.mipmap.ic_launcher_round);
         String iconUri = prefs.getString("home_shortcut_icon_uri", "");
         if (!iconUri.isEmpty()) {
             Bitmap bitmap = decodeShortcutBitmap(Uri.parse(iconUri));
@@ -837,7 +910,7 @@ public class MainActivity extends Activity {
 
         ShortcutInfo shortcut = new ShortcutInfo.Builder(this, "ayane-home-shortcut")
                 .setShortLabel(label)
-                .setLongLabel(label + " · Dynamic Island")
+                .setLongLabel(label + " · Đảo động Ayane")
                 .setIcon(icon)
                 .setIntent(launchIntent)
                 .build();
@@ -929,8 +1002,8 @@ public class MainActivity extends Activity {
         int appCount = getLauncherAppCount();
         String state = "Hiển thị nổi: " + (overlay ? "ĐÃ CẤP" : "CHƯA CẤP")
                 + "  •  Thông báo: " + (listener ? "ĐÃ CẤP" : "CHƯA CẤP")
-                + "  •  App có biểu tượng: " + appCount
-                + "  •  Pin: " + (ignoringBattery ? "Không hạn chế" : "Theo hệ thống");
+                + "  •  Ứng dụng có biểu tượng: " + appCount
+                + "  •  Tối ưu pin: " + (ignoringBattery ? "Không hạn chế" : "Theo hệ thống");
         permissionStatus.setText(state);
         permissionStatus.setTextColor(overlay && listener ? 0xFF79DFAE : 0xFFFFC66D);
     }
@@ -967,7 +1040,7 @@ public class MainActivity extends Activity {
         t.setText(value);
         t.setTextSize(size);
         t.setTextColor(color);
-        if (bold) t.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        t.setTypeface(AyaneTypography.resolve(this, bold));
         return t;
     }
 
@@ -976,7 +1049,7 @@ public class MainActivity extends Activity {
         b.setText(label);
         b.setTextSize(12);
         b.setTextColor(Color.WHITE);
-        b.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        b.setTypeface(AyaneTypography.resolve(this, true));
         b.setAllCaps(false);
         b.setBackground(roundRect(color, dp(13), color, 0));
         return b;
@@ -987,6 +1060,7 @@ public class MainActivity extends Activity {
         b.setText(label);
         b.setTextSize(11);
         b.setTextColor(0xFFE8E3F5);
+        b.setTypeface(AyaneTypography.resolve(this, true));
         b.setAllCaps(false);
         b.setBackground(roundRect(0xFF222632, dp(12), 0xFF444B5A, dp(1)));
         return b;
@@ -997,6 +1071,7 @@ public class MainActivity extends Activity {
         b.setText(label);
         b.setTextSize(9);
         b.setTextColor(Color.WHITE);
+        b.setTypeface(AyaneTypography.resolve(this, true));
         b.setAllCaps(false);
         b.setPadding(dp(8), 0, dp(8), 0);
         b.setBackground(roundRect(0xFF41345F, dp(9), 0xFF65518F, dp(1)));

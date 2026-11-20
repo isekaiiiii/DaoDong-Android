@@ -5,6 +5,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.media.AudioManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -27,6 +28,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.provider.Settings;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -79,7 +81,11 @@ public class IslandService extends Service {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean expanded = false;
     private boolean receiverRegistered = false;
+    private boolean systemReceiverRegistered = false;
     private boolean keyboardMode = false;
+    private boolean islandIdle = false;
+    private String transientSystemEvent = "";
+    private long systemEventExpiresAt = 0L;
     private String lastIconPackage = "";
     private String lastCustomIconUri = "";
     private float lastTouchX;
@@ -92,6 +98,20 @@ public class IslandService extends Service {
     private final BroadcastReceiver dataReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
             updateContent();
+        }
+    };
+
+    private final BroadcastReceiver systemEventReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            if (intent == null || !AudioManager.RINGER_MODE_CHANGED_ACTION.equals(intent.getAction())) return;
+            AudioManager audio = (AudioManager) getSystemService(AUDIO_SERVICE);
+            int mode = audio == null ? AudioManager.RINGER_MODE_NORMAL : audio.getRingerMode();
+            String label = mode == AudioManager.RINGER_MODE_SILENT ? "Im lặng"
+                    : mode == AudioManager.RINGER_MODE_VIBRATE ? "Rung" : "Chuông";
+            transientSystemEvent = "Chế độ âm thanh · " + label;
+            systemEventExpiresAt = System.currentTimeMillis() + 4200L;
+            updateContent();
+            animateContentChange();
         }
     };
 
@@ -118,6 +138,12 @@ public class IslandService extends Service {
                 registerReceiver(dataReceiver, dataFilter);
             }
             receiverRegistered = true;
+        } catch (Exception ignored) { }
+        try {
+            IntentFilter systemFilter = new IntentFilter(AudioManager.RINGER_MODE_CHANGED_ACTION);
+            if (Build.VERSION.SDK_INT >= 33) registerReceiver(systemEventReceiver, systemFilter, Context.RECEIVER_NOT_EXPORTED);
+            else registerReceiver(systemEventReceiver, systemFilter);
+            systemReceiverRegistered = true;
         } catch (Exception ignored) { }
         handler.post(ticker);
     }
@@ -279,7 +305,7 @@ public class IslandService extends Service {
             IslandNotificationListener.skipToPrevious(this);
             handler.postDelayed(this::updateContent, 350);
         });
-        mediaButton = makeText("▶  /  ⏸", 12, prefs.getInt("accent_color", 0xFFA680FF), true);
+        mediaButton = makeText("▶  /  ⏸", 12, prefs.getInt("accent_color", 0xFFD6A3FF), true);
         mediaButton.setGravity(Gravity.CENTER);
         mediaButton.setOnClickListener(v -> {
             IslandNotificationListener.togglePlayback(this);
@@ -316,7 +342,7 @@ public class IslandService extends Service {
         notificationActions.setGravity(Gravity.CENTER_VERTICAL);
         notificationActions.setPadding(0, dp(7), 0, dp(2));
         notificationActions.addView(replyInput, new LinearLayout.LayoutParams(0, dp(42), 1));
-        replyButton = actionButton("Trả lời", prefs.getInt("accent_color", 0xFFA680FF));
+        replyButton = actionButton("Trả lời", prefs.getInt("accent_color", 0xFFD6A3FF));
         replyButton.setOnClickListener(v -> sendReply());
         notificationActions.addView(replyButton, new LinearLayout.LayoutParams(-2, dp(42)));
         dismissButton = actionButton("Bỏ qua", 0xFF343946);
@@ -377,7 +403,7 @@ public class IslandService extends Service {
     }
 
     private boolean handleTouch(View view, MotionEvent event) {
-        boolean allowDrag = prefs.getBoolean("allow_drag", false);
+        boolean allowDrag = prefs.getBoolean("allow_drag", true);
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 lastTouchX = event.getRawX();
@@ -455,10 +481,13 @@ public class IslandService extends Service {
         int requestedExpandedWidth = dp(prefs.getInt("expanded_width", 420));
         int height = dp(prefs.getInt("height", 64));
         int expandedHeight = dp(prefs.getInt("expanded_height", 330));
+        boolean idleCompact = islandIdle && prefs.getBoolean("idle_compact", true) && !expanded;
+        int effectiveHeight = idleCompact ? dp(Math.max(32, Math.min(72, prefs.getInt("idle_height", 42)))) : height;
+        int effectiveWidth = idleCompact ? Math.min(requestedWidth, dp(Math.max(72, Math.min(180, prefs.getInt("idle_width", 104))))) : requestedWidth;
         android.util.DisplayMetrics metrics = getResources().getDisplayMetrics();
         int maxScreenWidth = Math.max(dp(180), metrics.widthPixels - dp(12));
-        windowParams.width = Math.min(expanded ? requestedExpandedWidth : requestedWidth, maxScreenWidth);
-        windowParams.height = expanded ? Math.min(height + expandedHeight, Math.max(height + dp(120), metrics.heightPixels - dp(24))) : height;
+        windowParams.width = Math.min(expanded ? requestedExpandedWidth : effectiveWidth, maxScreenWidth);
+        windowParams.height = expanded ? Math.min(height + expandedHeight, Math.max(height + dp(120), metrics.heightPixels - dp(24))) : effectiveHeight;
         int maxOffsetX = Math.max(0, (metrics.widthPixels - windowParams.width) / 2);
         int minOffsetY = -Math.min(dp(900), metrics.heightPixels / 2);
         int maxOffsetY = Math.max(0, metrics.heightPixels - windowParams.height);
@@ -466,7 +495,7 @@ public class IslandService extends Service {
         windowParams.y = Math.max(minOffsetY, Math.min(maxOffsetY, dp(prefs.getInt("y", -4))));
         View top = islandRoot.getChildAt(0);
         android.view.ViewGroup.LayoutParams topParams = top.getLayoutParams();
-        topParams.height = height;
+        topParams.height = expanded ? height : effectiveHeight;
         top.setLayoutParams(topParams);
         expandedPanel.setVisibility(expanded ? View.VISIBLE : View.GONE);
         if (expandedPanel != null) {
@@ -474,12 +503,25 @@ public class IslandService extends Service {
             panelParams.height = expanded ? Math.max(0, windowParams.height - dp(prefs.getInt("height", 64))) : -2;
             expandedPanel.setLayoutParams(panelParams);
         }
-        if (mediaButton != null) mediaButton.setTextColor(prefs.getInt("media_color", prefs.getInt("accent_color", 0xFFA680FF)));
-        if (replyButton != null) replyButton.setBackground(makeRoundDrawable(prefs.getInt("reply_color", prefs.getInt("accent_color", 0xFFA680FF)), dp(10), 0, 0));
+        if (mediaButton != null) mediaButton.setTextColor(prefs.getInt("media_color", prefs.getInt("accent_color", 0xFFD6A3FF)));
+        if (replyButton != null) replyButton.setBackground(makeRoundDrawable(prefs.getInt("reply_color", prefs.getInt("accent_color", 0xFFD6A3FF)), dp(10), 0, 0));
         rebuildTopRow();
+        applyTypography(islandRoot);
         applyGlassEffect();
         applyBackground();
         try { windowManager.updateViewLayout(islandRoot, windowParams); } catch (Exception ignored) { }
+    }
+
+    private void applyTypography(View view) {
+        if (view == null) return;
+        if (view instanceof TextView) {
+            TextView label = (TextView) view;
+            label.setTypeface(AyaneTypography.resolve(this, label.getTypeface() != null && label.getTypeface().isBold()));
+        }
+        if (view instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) applyTypography(group.getChildAt(i));
+        }
     }
 
     private void applyGlassEffect() {
@@ -503,7 +545,7 @@ public class IslandService extends Service {
         int panelColor = prefs.getInt("panel_bg_color", 0xEE171923);
         int textColor = prefs.getInt("text_color", Color.WHITE);
         int radius = prefs.getInt("corner_radius", 38);
-        int border = prefs.getInt("border_color", prefs.getInt("accent_color", 0xFFA680FF));
+        int border = prefs.getInt("border_color", prefs.getInt("accent_color", 0xFFD6A3FF));
         int borderWidth = prefs.getInt("border_width", 1);
         GradientDrawable glassSurface = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{blendAlpha(bgColor, 0xFF30384A, 35), bgColor, blendAlpha(bgColor, 0xFF090B12, 12)});
@@ -525,7 +567,7 @@ public class IslandService extends Service {
                 prefs.getInt("avatar_bg_color", 0xFF252A36), dp(13), 0x00000000, 0));
         if (appIconView != null) appIconView.setBackground(makeRoundDrawable(
                 prefs.getInt("avatar_bg_color", 0xFF252A36), dp(8), 0x00000000, 0));
-        if (mediaButton != null) mediaButton.setTextColor(prefs.getInt("media_color", prefs.getInt("accent_color", 0xFFA680FF)));
+        if (mediaButton != null) mediaButton.setTextColor(prefs.getInt("media_color", prefs.getInt("accent_color", 0xFFD6A3FF)));
     }
 
     private int blendAlpha(int base, int overlay, int amount) {
@@ -557,14 +599,22 @@ public class IslandService extends Service {
         long remaining = Math.max(0L, timerEnd - System.currentTimeMillis());
         long demoUntil = prefs.getLong("demo_until", 0L);
         boolean demoActive = demoUntil > System.currentTimeMillis();
-        int accent = prefs.getInt("accent_color", 0xFFA680FF);
+        int accent = prefs.getInt("accent_color", 0xFFD6A3FF);
         int textColor = prefs.getInt("text_color", Color.WHITE);
 
-        boolean hasNotification = showNotif && selected != null;
-        String customIconUri = prefs.getString("custom_icon_uri", "");
-        boolean hasIconPackage = showAppIcon && hasNotification
-                && (!notificationPackage.isEmpty() || !customIconUri.isEmpty());
+        boolean hasCallActivity = showNotif && selected != null && (selected.incomingCall || selected.ongoingCall);
+        boolean hasTimerActivity = showNotif && selected != null && selected.timerOrAlarm;
+        boolean hasNotification = showNotif && selected != null && !hasCallActivity && !hasTimerActivity;
         IslandNotificationListener.refreshMediaState();
+        String activeMediaTitle = IslandNotificationListener.getMediaTitle();
+        String activeMediaArtist = IslandNotificationListener.getMediaArtist();
+        String activeMediaPackage = IslandNotificationListener.getMediaPackage();
+        boolean hasMedia = activeMediaTitle != null && !activeMediaTitle.isEmpty();
+        String customIconUri = prefs.getString("custom_icon_uri", "");
+        String iconPackage = hasCallActivity || hasTimerActivity ? notificationPackage
+                : (hasNotification ? notificationPackage : activeMediaPackage);
+        boolean hasIconPackage = showAppIcon && ((!iconPackage.isEmpty()) || (!customIconUri.isEmpty()))
+                && (hasNotification || hasCallActivity || hasTimerActivity || hasMedia);
         if (appIconView != null) {
             appIconView.setVisibility(hasIconPackage ? View.VISIBLE : View.GONE);
             if (hasIconPackage && !customIconUri.isEmpty() && !customIconUri.equals(lastCustomIconUri)) {
@@ -572,16 +622,16 @@ public class IslandService extends Service {
                 if (bitmap != null) appIconView.setImageDrawable(new BitmapDrawable(getResources(), bitmap));
                 else appIconView.setImageResource(android.R.drawable.sym_def_app_icon);
                 lastCustomIconUri = customIconUri;
-                lastIconPackage = notificationPackage;
+                lastIconPackage = iconPackage;
             } else if (hasIconPackage && customIconUri.isEmpty()
-                    && (!notificationPackage.equals(lastIconPackage) || !lastCustomIconUri.isEmpty())) {
+                    && (!iconPackage.equals(lastIconPackage) || !lastCustomIconUri.isEmpty())) {
                 try {
-                    Drawable icon = getPackageManager().getApplicationIcon(notificationPackage);
+                    Drawable icon = getPackageManager().getApplicationIcon(iconPackage);
                     appIconView.setImageDrawable(icon);
                 } catch (Exception e) {
                     appIconView.setImageResource(android.R.drawable.sym_def_app_icon);
                 }
-                lastIconPackage = notificationPackage;
+                lastIconPackage = iconPackage;
                 lastCustomIconUri = "";
             } else if (!hasIconPackage) {
                 lastIconPackage = "";
@@ -595,18 +645,52 @@ public class IslandService extends Service {
         if (islandLabel.isEmpty()) islandLabel = "Ayane";
         String headline = islandLabel;
         if (demoActive) headline = "Ayane đã sẵn sàng";
+        else if (hasCallActivity) headline = (selected.ongoingCall ? "Đang gọi · " : "Cuộc gọi · ")
+                + (notificationSender.isEmpty() ? notification : notificationSender);
+        else if (hasTimerActivity && selected != null) headline = "⌛ " + trim(notification, 28);
+        else if (timerEnd > 0 && remaining > 0) headline = "⌛ " + formatTime(remaining);
+        else if (hasMedia) headline = "♫  " + activeMediaTitle;
         else if (hasNotification) {
             String appPart = customName.isEmpty() ? (showAppName ? sourceAppName : "") : customName;
             headline = appPart.isEmpty() ? notification : appPart + " · " + notification;
-        } else if (timerEnd > 0 && remaining > 0) headline = "Hẹn giờ " + formatTime(remaining);
+        } else if (systemEventExpiresAt > System.currentTimeMillis()) headline = transientSystemEvent;
         else if (!customName.isEmpty()) headline = customName;
+
+        boolean idleNow = !demoActive && !hasCallActivity && !hasTimerActivity
+                && !(timerEnd > 0 && remaining > 0) && !hasMedia && !hasNotification
+                && systemEventExpiresAt <= System.currentTimeMillis();
+        boolean idleCompact = idleNow && prefs.getBoolean("idle_compact", true);
+        compactText.setVisibility(idleCompact ? View.GONE : View.VISIBLE);
+        rightText.setVisibility(idleCompact ? View.GONE : View.VISIBLE);
+        if (idleCompact) {
+            appIconView.setImageResource(R.mipmap.ic_launcher_round);
+            appIconView.setVisibility(View.VISIBLE);
+        }
+        if (islandIdle != idleNow) {
+            islandIdle = idleNow;
+            applySettings();
+        }
         compactText.setText(trim(headline, 42));
         compactText.setTextColor(textColor);
-        rightText.setText("●");
-        rightText.setTextColor(accent);
+        if (hasCallActivity) { rightText.setText("☎"); rightText.setTextColor(0xFFFF8798); }
+        else if (hasTimerActivity || (timerEnd > 0 && remaining > 0)) { rightText.setText("⌛"); rightText.setTextColor(0xFFFFC46B); }
+        else if (hasMedia) { rightText.setText("♫"); rightText.setTextColor(prefs.getInt("media_color", accent)); }
+        else if (systemEventExpiresAt > System.currentTimeMillis()) { rightText.setText("◖"); rightText.setTextColor(0xFFFFC2DA); }
+        else { rightText.setText("●"); rightText.setTextColor(accent); }
 
         StringBuilder details = new StringBuilder();
         if (demoActive) details.append("Ayane đang hoạt động\nChạm để mở rộng hoặc thu gọn. Vị trí được chỉnh trong ứng dụng.");
+        if (hasCallActivity) appendLine(details,
+                (selected != null && selected.ongoingCall ? "Đang gọi · " : "Cuộc gọi đến · ") + notification);
+        if (hasTimerActivity && selected != null) {
+            if (selected.showChronometer && selected.chronometerWhen > 0) {
+                long chrono = selected.chronometerCountDown
+                        ? Math.max(0L, selected.chronometerWhen - System.currentTimeMillis())
+                        : Math.max(0L, System.currentTimeMillis() - selected.chronometerWhen);
+                appendLine(details, (selected.chronometerCountDown ? "Còn " : "Đã chạy ") + formatTime(chrono));
+            } else appendLine(details, "Hẹn giờ / báo thức · " + notificationText);
+        }
+        if (hasMedia) appendLine(details, "♫  " + activeMediaTitle + (activeMediaArtist.isEmpty() ? "" : " · " + activeMediaArtist));
         if (hasNotification) {
             String appPart = customName.isEmpty() ? (showAppName ? sourceAppName : "Thông báo") : customName;
             appendLine(details, "✦  " + (appPart.isEmpty() ? "Thông báo" : appPart));
@@ -614,6 +698,8 @@ public class IslandService extends Service {
             else appendLine(details, notification);
             if (!notificationText.isEmpty()) appendLine(details, notificationText);
         }
+        if (systemEventExpiresAt > System.currentTimeMillis()) appendLine(details, transientSystemEvent);
+        else if (!transientSystemEvent.isEmpty()) transientSystemEvent = "";
         if (timerEnd > 0) {
             if (remaining == 0) {
                 appendLine(details, "Hẹn giờ đã kết thúc");
@@ -702,7 +788,12 @@ public class IslandService extends Service {
         } else if (mode == 2) {
             islandRoot.setScaleX(0.94f);
             islandRoot.setScaleY(0.94f);
-            islandRoot.animate().scaleX(1f).scaleY(1f).setDuration(duration).setInterpolator(new android.view.animation.OvershootInterpolator(1.15f)).start();
+            float tension = Math.max(0.4f, Math.min(2.2f, prefs.getInt("spring_tension", 12) / 10f));
+            islandRoot.animate().scaleX(1f).scaleY(1f).setDuration(duration)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator(tension)).start();
+        }
+        if (prefs.getBoolean("haptic_feedback", true)) {
+            islandRoot.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
         }
     }
 
@@ -759,7 +850,7 @@ public class IslandService extends Service {
         text.setTextSize(size);
         text.setTextColor(color);
         text.setGravity(Gravity.CENTER_VERTICAL);
-        if (bold) text.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        text.setTypeface(AyaneTypography.resolve(this, bold));
         return text;
     }
 
@@ -800,6 +891,9 @@ public class IslandService extends Service {
         }
         if (receiverRegistered) {
             try { unregisterReceiver(dataReceiver); } catch (Exception ignored) { }
+        }
+        if (systemReceiverRegistered) {
+            try { unregisterReceiver(systemEventReceiver); } catch (Exception ignored) { }
         }
         if (islandRoot != null && windowManager != null) {
             try { windowManager.removeView(islandRoot); } catch (Exception ignored) { }

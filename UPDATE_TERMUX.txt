@@ -1,28 +1,43 @@
-AYANE ULTIMATE 2.2 — CẬP NHẬT BẰNG TERMUX
+AYANE BLOSSOM ULTIMATE 2.4.0 — CẬP NHẬT BẰNG TERMUX
 
-Cách an toàn: dùng một thư mục clone mới, giữ nguyên thư mục/repository cũ.
+LƯU Ý: Tải Ayane_Blossom_v2.4_Source.zip vào thư mục Download trước khi chạy lệnh.
 
-1) Tải Ayane_Ultimate_v2.2_Source.zip vào thư mục Download.
-2) Mở Termux và chạy từng lệnh:
+1) Vào Download và clone repository vào một thư mục làm việc MỚI:
 
 cd ~/storage/downloads
-git clone https://github.com/isekaiiiii/DaoDong-Android.git Ayane-Ultimate-v22
-cd Ayane-Ultimate-v22
+git clone https://github.com/isekaiiiii/DaoDong-Android.git Ayane-Blossom-v24
+cd Ayane-Blossom-v24
+
+2) Tin cậy thư mục này với Git (tránh lỗi dubious ownership):
+
 git config --global --add safe.directory "$PWD"
-rm -rf app .github
-rm -f build.gradle settings.gradle gradle.properties README.md UPDATE_TERMUX.txt .gitignore
-unzip -o ~/storage/downloads/Ayane_Ultimate_v2.2_Source.zip
+
+3) Xóa nội dung cũ trong thư mục clone nhưng giữ thư mục .git, rồi giải nén source v2.4:
+
+find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+unzip -o ~/storage/downloads/Ayane_Blossom_v2.4_Source.zip -d "$PWD"
+
+4) Kiểm tra các file gốc đã được giải nén:
+
+ls -la
+ls -la app
+
+Ở thư mục gốc cần có app/, .github/, build.gradle, settings.gradle, gradle.properties.
+
+5) Commit và đẩy source lên GitHub:
 
 git add -A
-git commit -m "Upgrade Ayane Ultimate 2.2"
+git status --short
+git commit -m "Upgrade Ayane Blossom 2.4"
 git push origin main
 
-3) Mở GitHub → Actions → Build Ayane Ultimate APK v2.2.
-4) Khi run có dấu tick xanh, tải artifact: Ayane-Ultimate-APK-v2.2.
-5) Giải nén artifact ZIP để lấy app-debug.apk.
+Nếu Git hỏi Username, nhập isekaiiiii. Nếu hỏi Password, nhập GitHub Personal Access Token (PAT), không dùng mật khẩu tài khoản GitHub. Khi dán PAT, Termux không hiển thị ký tự là bình thường. Không gửi PAT cho bất kỳ ai.
 
-LƯU Ý:
-- Nếu Git báo dubious ownership, chạy: git config --global --add safe.directory "$PWD"
-- Nếu GitHub hỏi Username: nhập username GitHub. Password: nhập Personal Access Token (PAT), không phải mật khẩu tài khoản. Không gửi PAT cho người khác.
-- Nếu commit báo nothing to commit, kiểm tra ZIP đã giải nén ở đúng thư mục gốc chưa.
-- Đây là mã nguồn; APK chỉ có sau khi GitHub Actions build thành công.
+Nếu git commit báo "nothing to commit", kiểm tra lại tên ZIP, vị trí tệp trong Download và cấu trúc thư mục; không tiếp tục push cho đến khi source v2.4 thực sự xuất hiện trong git status.
+
+6) Mở GitHub Actions:
+https://github.com/isekaiiiii/DaoDong-Android/actions
+
+Chọn workflow "Tạo APK Ayane Blossom 2.4". Sau khi có dấu tích xanh, mở lần chạy mới nhất → Artifacts → tải "Ayane-Blossom-APK-v2.4". Giải nén ZIP Artifact để lấy app-debug.apk.
+
+Nếu build lỗi, mở job "build", chọn bước có dấu X đỏ và gửi log lỗi (không gửi token hoặc thông tin bí mật).

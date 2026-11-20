@@ -1,4 +1,4 @@
-name: Build Ayane Ultimate APK v2.2
+name: Tạo APK Ayane Blossom 2.4
 
 on:
   workflow_dispatch:
@@ -37,10 +37,10 @@ jobs:
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
 
-      - name: Upload Ayane Ultimate APK v2.2
+      - name: Tải lên APK Ayane Blossom 2.4
         uses: actions/upload-artifact@v4
         with:
-          name: Ayane-Ultimate-APK-v2.2
+          name: Ayane-Blossom-APK-v2.4
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14

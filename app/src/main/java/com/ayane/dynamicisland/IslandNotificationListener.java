@@ -19,6 +19,7 @@ import android.media.session.PlaybackState;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcelable;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
@@ -29,6 +30,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -48,6 +50,10 @@ public class IslandNotificationListener extends NotificationListenerService {
     private static volatile String mediaPackage = "";
     private static volatile boolean mediaPlaying = false;
     private static volatile Bitmap mediaArtwork;
+    private static volatile long mediaDuration = 0L;
+    private static volatile long mediaPosition = 0L;
+    private static volatile long mediaPositionUpdatedAt = 0L;
+    private static volatile float mediaPlaybackSpeed = 0f;
 
     public static final class NotificationItem {
         public final String key;
@@ -64,12 +70,29 @@ public class IslandNotificationListener extends NotificationListenerService {
         public final String replyResultKey;
         public final boolean ongoing;
         public final boolean autoCancel;
+        public final String category;
+        public final boolean incomingCall;
+        public final boolean ongoingCall;
+        public final boolean timerOrAlarm;
+        public final boolean showChronometer;
+        public final boolean chronometerCountDown;
+        public final long chronometerWhen;
+        public final PendingIntent answerIntent;
+        public final PendingIntent declineIntent;
+        public final PendingIntent hangUpIntent;
+        public final PendingIntent timerActionIntent;
+        public final String timerActionTitle;
 
         NotificationItem(String key, String packageName, String appName, String title,
                          String text, String senderName, long postTime, Icon avatarIcon,
                          PendingIntent contentIntent, PendingIntent replyIntent,
                          RemoteInput[] remoteInputs, String replyResultKey, boolean ongoing,
-                         boolean autoCancel) {
+                         boolean autoCancel, String category, boolean incomingCall,
+                         boolean ongoingCall, boolean timerOrAlarm, boolean showChronometer,
+                         boolean chronometerCountDown, long chronometerWhen,
+                         PendingIntent answerIntent, PendingIntent declineIntent,
+                         PendingIntent hangUpIntent, PendingIntent timerActionIntent,
+                         String timerActionTitle) {
             this.key = key;
             this.packageName = packageName;
             this.appName = appName;
@@ -84,6 +107,18 @@ public class IslandNotificationListener extends NotificationListenerService {
             this.replyResultKey = replyResultKey;
             this.ongoing = ongoing;
             this.autoCancel = autoCancel;
+            this.category = category;
+            this.incomingCall = incomingCall;
+            this.ongoingCall = ongoingCall;
+            this.timerOrAlarm = timerOrAlarm;
+            this.showChronometer = showChronometer;
+            this.chronometerCountDown = chronometerCountDown;
+            this.chronometerWhen = chronometerWhen;
+            this.answerIntent = answerIntent;
+            this.declineIntent = declineIntent;
+            this.hangUpIntent = hangUpIntent;
+            this.timerActionIntent = timerActionIntent;
+            this.timerActionTitle = timerActionTitle;
         }
 
         public boolean canReply() {
@@ -166,30 +201,89 @@ public class IslandNotificationListener extends NotificationListenerService {
         String body = clean(bodyCs == null ? "" : bodyCs.toString());
         if (body.isEmpty() && sender.message != null) body = clean(sender.message);
         String senderName = clean(sender.name == null ? "" : sender.name);
+        Icon callerAvatar = sender.icon;
+        if (Build.VERSION.SDK_INT >= 31) {
+            try {
+                android.app.Person callPerson = extras.getParcelable(Notification.EXTRA_CALL_PERSON);
+                if (callPerson != null) {
+                    if (senderName.isEmpty() && callPerson.getName() != null) {
+                        senderName = clean(callPerson.getName().toString());
+                    }
+                    if (callerAvatar == null) callerAvatar = callPerson.getIcon();
+                }
+            } catch (RuntimeException ignored) { }
+        }
         String appName = resolveAppName(pkg);
 
         PendingIntent replyIntent = null;
+        PendingIntent answerIntent = null;
+        PendingIntent declineIntent = null;
+        PendingIntent hangUpIntent = null;
+        PendingIntent timerActionIntent = null;
+        String timerActionTitle = "";
         RemoteInput[] remoteInputs = null;
         String replyResultKey = "";
         Notification.Action[] actions = notification.actions;
         if (actions != null) {
             for (Notification.Action action : actions) {
                 if (action == null || action.actionIntent == null) continue;
+                String actionTitle = action.title == null ? "" : action.title.toString().trim();
+                String lower = actionTitle.toLowerCase(Locale.ROOT);
+                int semantic = Build.VERSION.SDK_INT >= 28 ? action.getSemanticAction() : 0;
+                if (answerIntent == null && (semantic == Notification.Action.SEMANTIC_ACTION_CALL
+                        || lower.contains("answer") || lower.contains("accept")
+                        || lower.contains("nghe") || lower.contains("nhận cuộc"))) {
+                    answerIntent = action.actionIntent;
+                }
+                if (declineIntent == null && (lower.contains("decline") || lower.contains("reject")
+                        || lower.contains("end call") || lower.contains("từ chối")
+                        || lower.contains("gác máy"))) {
+                    declineIntent = action.actionIntent;
+                }
+                if (timerActionIntent == null && (lower.contains("snooze") || lower.contains("dismiss")
+                        || lower.contains("stop") || lower.contains("tắt") || lower.contains("hoãn"))) {
+                    timerActionIntent = action.actionIntent;
+                    timerActionTitle = actionTitle;
+                }
                 RemoteInput[] inputs = action.getRemoteInputs();
-                if (inputs == null || inputs.length == 0) continue;
-                for (RemoteInput input : inputs) {
-                    if (input != null && input.getAllowFreeFormInput()) {
-                        replyIntent = action.actionIntent;
-                        remoteInputs = inputs;
-                        replyResultKey = input.getResultKey();
-                        break;
+                if (replyIntent == null && inputs != null && inputs.length > 0) {
+                    for (RemoteInput input : inputs) {
+                        if (input != null && input.getAllowFreeFormInput()) {
+                            replyIntent = action.actionIntent;
+                            remoteInputs = inputs;
+                            replyResultKey = input.getResultKey();
+                            break;
+                        }
                     }
                 }
-                if (replyIntent != null) break;
             }
         }
+        String category = notification.category == null ? "" : notification.category;
+        if (Build.VERSION.SDK_INT >= 31) {
+            if (answerIntent == null) answerIntent = readPendingIntentExtra(extras, Notification.EXTRA_ANSWER_INTENT);
+            if (declineIntent == null) declineIntent = readPendingIntentExtra(extras, Notification.EXTRA_DECLINE_INTENT);
+            hangUpIntent = readPendingIntentExtra(extras, Notification.EXTRA_HANG_UP_INTENT);
+        }
+        boolean showChronometer = extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false);
+        boolean chronometerCountDown = Build.VERSION.SDK_INT >= 24
+                && extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, false);
+        long chronometerWhen = notification.when;
+        String packageLower = pkg.toLowerCase(Locale.ROOT);
+        boolean timerPackage = packageLower.contains("deskclock") || packageLower.contains("clockpackage")
+                || packageLower.endsWith(".clock") || packageLower.contains("alarmclock");
+        boolean isCallCategory = Notification.CATEGORY_CALL.equals(category);
+        int callType = -1;
+        if (Build.VERSION.SDK_INT >= 34) {
+            callType = extras.getInt(Notification.EXTRA_CALL_TYPE, -1);
+        }
+        boolean ongoingCall = isCallCategory && (callType == Notification.CallStyle.CALL_TYPE_ONGOING
+                || (hangUpIntent != null && answerIntent == null));
+        boolean timerOrAlarm = !isCallCategory && (Notification.CATEGORY_ALARM.equals(category)
+                || "stopwatch".equals(category) || showChronometer || timerPackage);
+        boolean incomingCall = (isCallCategory && !ongoingCall)
+                || (answerIntent != null && declineIntent != null);
 
-        Icon avatar = sender.icon;
+        Icon avatar = callerAvatar;
         if (avatar == null) {
             try { avatar = notification.getLargeIcon(); } catch (RuntimeException ignored) { }
         }
@@ -198,7 +292,10 @@ public class IslandNotificationListener extends NotificationListenerService {
                 sbn.getKey(), pkg, appName, title, body, senderName,
                 sbn.getPostTime(), avatar, notification.contentIntent,
                 replyIntent, remoteInputs, replyResultKey, ongoing,
-                (notification.flags & Notification.FLAG_AUTO_CANCEL) != 0);
+                (notification.flags & Notification.FLAG_AUTO_CANCEL) != 0,
+                category, incomingCall, ongoingCall, timerOrAlarm, showChronometer,
+                chronometerCountDown, chronometerWhen, answerIntent, declineIntent,
+                hangUpIntent, timerActionIntent, timerActionTitle);
 
         synchronized (LOCK) {
             ITEMS.remove(item.key);
@@ -252,6 +349,15 @@ public class IslandNotificationListener extends NotificationListenerService {
             return label == null ? packageName : label.toString();
         } catch (Exception ignored) {
             return packageName;
+        }
+    }
+
+    private PendingIntent readPendingIntentExtra(Bundle extras, String key) {
+        try {
+            Parcelable value = extras.getParcelable(key);
+            return value instanceof PendingIntent ? (PendingIntent) value : null;
+        } catch (RuntimeException ignored) {
+            return null;
         }
     }
 
@@ -362,6 +468,49 @@ public class IslandNotificationListener extends NotificationListenerService {
     public static String getMediaPackage() { return mediaPackage; }
     public static boolean isMediaPlaying() { return mediaPlaying; }
     public static Bitmap getMediaArtwork() { return mediaArtwork; }
+    public static long getMediaDuration() { return mediaDuration; }
+    public static long getMediaPosition() {
+        long position = mediaPosition;
+        if (mediaPlaying && mediaPositionUpdatedAt > 0L) {
+            long elapsed = Math.max(0L, SystemClock.elapsedRealtime() - mediaPositionUpdatedAt);
+            position += (long) (elapsed * mediaPlaybackSpeed);
+        }
+        if (mediaDuration > 0L) position = Math.min(position, mediaDuration);
+        return Math.max(0L, position);
+    }
+    public static void seekMedia(Context context, long positionMs) {
+        try {
+            MediaSessionManager manager = (MediaSessionManager)
+                    context.getSystemService(Context.MEDIA_SESSION_SERVICE);
+            if (manager == null) return;
+            List<MediaController> sessions = manager.getActiveSessions(
+                    new ComponentName(context, IslandNotificationListener.class));
+            if (sessions == null || sessions.isEmpty()) return;
+            MediaController controller = selectActiveMediaController(sessions);
+            if (controller == null) return;
+            controller.getTransportControls().seekTo(Math.max(0L, positionMs));
+            refreshMediaState();
+        } catch (RuntimeException ignored) { }
+    }
+    public static boolean answerCall(String key) { return sendSpecialAction(key, 1); }
+    public static boolean declineCall(String key) { return sendSpecialAction(key, 2); }
+    public static boolean hangUpCall(String key) { return sendSpecialAction(key, 4); }
+    public static boolean performTimerAction(String key) { return sendSpecialAction(key, 3); }
+    private static boolean sendSpecialAction(String key, int type) {
+        NotificationItem item;
+        synchronized (LOCK) { item = ITEMS.get(key); }
+        if (item == null) return false;
+        PendingIntent action = type == 1 ? item.answerIntent
+                : type == 2 ? item.declineIntent
+                : type == 4 ? item.hangUpIntent : item.timerActionIntent;
+        if (action == null) return false;
+        try {
+            action.send();
+            return true;
+        } catch (PendingIntent.CanceledException | RuntimeException ignored) {
+            return false;
+        }
+    }
     public static boolean hasReplyAction() {
         NotificationItem item = getSelectedNotification();
         return item != null && item.canReply();
@@ -466,7 +615,8 @@ public class IslandNotificationListener extends NotificationListenerService {
             List<MediaController> sessions = manager.getActiveSessions(
                     new ComponentName(context, IslandNotificationListener.class));
             if (sessions == null || sessions.isEmpty()) return;
-            MediaController controller = sessions.get(0);
+            MediaController controller = selectActiveMediaController(sessions);
+            if (controller == null) return;
             MediaController.TransportControls controls = controller.getTransportControls();
             if (command < 0) controls.skipToPrevious();
             else if (command > 0) controls.skipToNext();
@@ -478,12 +628,26 @@ public class IslandNotificationListener extends NotificationListenerService {
         } catch (RuntimeException ignored) { }
     }
 
+    private static MediaController selectActiveMediaController(List<MediaController> sessions) {
+        if (sessions == null || sessions.isEmpty()) return null;
+        for (MediaController controller : sessions) {
+            if (controller == null) continue;
+            PlaybackState state = controller.getPlaybackState();
+            if (state != null && state.getState() == PlaybackState.STATE_PLAYING) return controller;
+        }
+        return sessions.get(0);
+    }
+
     private void refreshMedia() {
         mediaTitle = "";
         mediaArtist = "";
         mediaPackage = "";
         mediaPlaying = false;
         mediaArtwork = null;
+        mediaDuration = 0L;
+        mediaPosition = 0L;
+        mediaPositionUpdatedAt = 0L;
+        mediaPlaybackSpeed = 0f;
         try {
             MediaSessionManager manager = (MediaSessionManager)
                     getSystemService(Context.MEDIA_SESSION_SERVICE);
@@ -491,16 +655,23 @@ public class IslandNotificationListener extends NotificationListenerService {
             List<MediaController> sessions = manager.getActiveSessions(
                     new ComponentName(this, IslandNotificationListener.class));
             if (sessions == null || sessions.isEmpty()) return;
-            MediaController controller = sessions.get(0);
+            MediaController controller = selectActiveMediaController(sessions);
+            if (controller == null) return;
             mediaPackage = controller.getPackageName() == null ? "" : controller.getPackageName();
             MediaMetadata metadata = controller.getMetadata();
             if (metadata != null) {
-                CharSequence title = metadata.getText(MediaMetadata.METADATA_KEY_TITLE);
-                CharSequence artist = metadata.getText(MediaMetadata.METADATA_KEY_ARTIST);
-                mediaTitle = title == null ? "Đang phát nhạc" : title.toString();
+                CharSequence title = metadata.getText(MediaMetadata.METADATA_KEY_DISPLAY_TITLE);
+                if (title == null || title.length() == 0) title = metadata.getText(MediaMetadata.METADATA_KEY_TITLE);
+                if (title == null || title.length() == 0) title = metadata.getText(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE);
+                CharSequence artist = metadata.getText(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE);
+                if (artist == null || artist.length() == 0) artist = metadata.getText(MediaMetadata.METADATA_KEY_ARTIST);
+                if (artist == null || artist.length() == 0) artist = metadata.getText(MediaMetadata.METADATA_KEY_ALBUM_ARTIST);
+                mediaTitle = title == null || title.length() == 0 ? "Đang phát nội dung" : title.toString();
                 mediaArtist = artist == null ? "" : artist.toString();
+                mediaDuration = Math.max(0L, metadata.getLong(MediaMetadata.METADATA_KEY_DURATION));
                 Bitmap artwork = metadata.getBitmap(MediaMetadata.METADATA_KEY_ART);
                 if (artwork == null) artwork = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART);
+                if (artwork == null) artwork = metadata.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON);
                 if (artwork != null) {
                     int size = Math.min(256, Math.max(artwork.getWidth(), artwork.getHeight()));
                     float ratio = Math.min(256f / Math.max(1, artwork.getWidth()), 256f / Math.max(1, artwork.getHeight()));
@@ -511,6 +682,12 @@ public class IslandNotificationListener extends NotificationListenerService {
             }
             PlaybackState state = controller.getPlaybackState();
             mediaPlaying = state != null && state.getState() == PlaybackState.STATE_PLAYING;
+            if (state != null) {
+                mediaPosition = Math.max(0L, state.getPosition());
+                mediaPositionUpdatedAt = state.getLastPositionUpdateTime();
+                if (mediaPositionUpdatedAt <= 0L) mediaPositionUpdatedAt = SystemClock.elapsedRealtime();
+                mediaPlaybackSpeed = mediaPlaying ? state.getPlaybackSpeed() : 0f;
+            }
         } catch (RuntimeException ignored) { }
     }
 
