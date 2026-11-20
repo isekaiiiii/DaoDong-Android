@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Chỉ xin quyền camera khi người dùng bấm Đèn pin trong Droidbar. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <!-- Chỉ truy vấn ứng dụng có biểu tượng khởi chạy; không yêu cầu QUERY_ALL_PACKAGES. -->
     <queries>
@@ -42,6 +45,19 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="User-visible floating island for notification controls, media controls and device status" />
+        </service>
+
+        <service
+            android:name=".AyaneAccessibilityService"
+            android:label="@string/ayane_accessibility_title"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/ayane_accessibility_config" />
         </service>
 
         <service

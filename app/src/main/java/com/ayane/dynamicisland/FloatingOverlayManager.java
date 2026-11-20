@@ -47,6 +47,7 @@ public final class FloatingOverlayManager {
     private static final String PREFS = "island_settings";
 
     private final Service service;
+    private final Context overlayContext;
     private final WindowManager windowManager;
     private final SharedPreferences prefs;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -98,6 +99,8 @@ public final class FloatingOverlayManager {
 
     public FloatingOverlayManager(Service service, WindowManager windowManager, SharedPreferences prefs) {
         this.service = service;
+        this.overlayContext = AyaneAccessibilityService.instance != null
+                ? AyaneAccessibilityService.instance : service;
         this.windowManager = windowManager;
         this.prefs = prefs;
     }
@@ -242,7 +245,7 @@ public final class FloatingOverlayManager {
 
     private void ensureHeader() {
         if (headerRoot != null) return;
-        LinearLayout row = new LinearLayout(service);
+        LinearLayout row = new LinearLayout(overlayContext);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(13), 0, dp(7), 0);
@@ -457,39 +460,39 @@ public final class FloatingOverlayManager {
 
     private void ensureMediaCard() {
         if (mediaRoot != null) return;
-        FrameLayout root = new FrameLayout(service);
+        FrameLayout root = new FrameLayout(overlayContext);
         root.setElevation(dp(18));
         root.setClipToOutline(true);
         root.setBackground(mediaCardBackground());
 
-        mediaBackdrop = new ImageView(service);
+        mediaBackdrop = new ImageView(overlayContext);
         mediaBackdrop.setScaleType(ImageView.ScaleType.CENTER_CROP);
         mediaBackdrop.setAlpha(0.36f);
         FrameLayout.LayoutParams backdropLp = new FrameLayout.LayoutParams(-1, -1);
         root.addView(mediaBackdrop, backdropLp);
-        View tint = new View(service);
+        View tint = new View(overlayContext);
         GradientDrawable tintGradient = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{0x99070A14, 0xBB0B1424, 0xE6101B2C});
         tintGradient.setCornerRadius(dp(26));
         tint.setBackground(tintGradient);
         root.addView(tint, new FrameLayout.LayoutParams(-1, -1));
 
-        LinearLayout content = new LinearLayout(service);
+        LinearLayout content = new LinearLayout(overlayContext);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(14), dp(12), dp(14), dp(11));
         FrameLayout.LayoutParams contentLp = new FrameLayout.LayoutParams(-1, -1);
         root.addView(content, contentLp);
 
-        LinearLayout header = new LinearLayout(service);
+        LinearLayout header = new LinearLayout(overlayContext);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        mediaArtwork = new ImageView(service);
+        mediaArtwork = new ImageView(overlayContext);
         mediaArtwork.setScaleType(ImageView.ScaleType.CENTER_CROP);
         mediaArtwork.setBackground(surface(prefs.getInt("avatar_bg_color", 0xFF252A36), dp(18), 0, 0));
         mediaArtwork.setClipToOutline(true);
         header.addView(mediaArtwork, new LinearLayout.LayoutParams(dp(58), dp(58)));
 
-        LinearLayout labels = new LinearLayout(service);
+        LinearLayout labels = new LinearLayout(overlayContext);
         labels.setOrientation(LinearLayout.VERTICAL);
         labels.setGravity(Gravity.CENTER_VERTICAL);
         labels.setPadding(dp(12), 0, dp(8), 0);
@@ -513,11 +516,11 @@ public final class FloatingOverlayManager {
         header.setOnClickListener(v -> toggleMediaExpanded());
         content.addView(header, new LinearLayout.LayoutParams(-1, -2));
 
-        mediaExpandedPanel = new LinearLayout(service);
+        mediaExpandedPanel = new LinearLayout(overlayContext);
         mediaExpandedPanel.setOrientation(LinearLayout.VERTICAL);
         mediaExpandedPanel.setPadding(0, dp(8), 0, 0);
 
-        mediaControlsRow = new LinearLayout(service);
+        mediaControlsRow = new LinearLayout(overlayContext);
         mediaControlsRow.setOrientation(LinearLayout.HORIZONTAL);
         mediaControlsRow.setGravity(Gravity.CENTER);
         TextView previous = text("|◀", 20, Color.WHITE, true);
@@ -543,13 +546,13 @@ public final class FloatingOverlayManager {
         mediaControlsRow.addView(mediaPlay, new LinearLayout.LayoutParams(dp(64), dp(48)));
         mediaControlsRow.addView(next, new LinearLayout.LayoutParams(dp(76), dp(52)));
 
-        mediaProgressRow = new LinearLayout(service);
+        mediaProgressRow = new LinearLayout(overlayContext);
         mediaProgressRow.setOrientation(LinearLayout.HORIZONTAL);
         mediaProgressRow.setGravity(Gravity.CENTER_VERTICAL);
         mediaElapsed = text("00:00", 9, 0xFFE0DCEC, true);
         mediaTotal = text("00:00", 9, 0xFFE0DCEC, true);
         mediaProgressRow.addView(mediaElapsed, new LinearLayout.LayoutParams(dp(42), dp(24)));
-        mediaSeekBar = new SeekBar(service);
+        mediaSeekBar = new SeekBar(overlayContext);
         mediaSeekBar.setMax(1000);
         mediaSeekBar.setProgressTintList(android.content.res.ColorStateList.valueOf(
                 prefs.getInt("media_color", prefs.getInt("accent_color", 0xFFD6A3FF))));
@@ -869,21 +872,21 @@ public final class FloatingOverlayManager {
         ActivityOverlay(IslandNotificationListener.NotificationItem item, boolean isCall) {
             this.item = item;
             this.isCall = isCall;
-            root = new LinearLayout(service);
+            root = new LinearLayout(overlayContext);
             root.setOrientation(LinearLayout.VERTICAL);
             root.setPadding(dp(13), dp(10), dp(13), dp(10));
             root.setElevation(dp(16));
             root.setBackground(surface(prefs.getInt("panel_bg_color", 0xF0181C27), dp(22),
                     prefs.getInt("border_color", prefs.getInt("accent_color", 0xFFD6A3FF)), dp(1)));
-            LinearLayout header = new LinearLayout(service);
+            LinearLayout header = new LinearLayout(overlayContext);
             header.setOrientation(LinearLayout.HORIZONTAL);
             header.setGravity(Gravity.CENTER_VERTICAL);
-            avatar = new ImageView(service);
+            avatar = new ImageView(overlayContext);
             avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);
             avatar.setBackground(surface(prefs.getInt("avatar_bg_color", 0xFF252A36), dp(18), 0, 0));
             avatar.setClipToOutline(true);
             header.addView(avatar, new LinearLayout.LayoutParams(dp(44), dp(44)));
-            LinearLayout labels = new LinearLayout(service);
+            LinearLayout labels = new LinearLayout(overlayContext);
             labels.setOrientation(LinearLayout.VERTICAL);
             labels.setGravity(Gravity.CENTER_VERTICAL);
             labels.setPadding(dp(10), 0, 0, 0);
@@ -902,7 +905,7 @@ public final class FloatingOverlayManager {
             header.setOnTouchListener(this::handleTouch);
             root.addView(header, new LinearLayout.LayoutParams(-1, dp(48)));
 
-            actions = new LinearLayout(service);
+            actions = new LinearLayout(overlayContext);
             actions.setOrientation(LinearLayout.HORIZONTAL);
             actions.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
             if (isCall) {
@@ -1195,19 +1198,19 @@ public final class FloatingOverlayManager {
 
     private void ensureChargingCard() {
         if (chargingRoot != null) return;
-        LinearLayout root = new LinearLayout(service);
+        LinearLayout root = new LinearLayout(overlayContext);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(13), dp(9), dp(12), dp(9));
         root.setElevation(dp(14));
         root.setBackground(surface(prefs.getInt("panel_bg_color", 0xF0181C27), dp(20),
                 prefs.getInt("border_color", prefs.getInt("accent_color", 0xFFD6A3FF)), dp(1)));
-        LinearLayout header = new LinearLayout(service);
+        LinearLayout header = new LinearLayout(overlayContext);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
         TextView bolt = text("ϟ", 24, 0xFFFFC46B, true);
         bolt.setGravity(Gravity.CENTER);
         header.addView(bolt, new LinearLayout.LayoutParams(dp(36), dp(36)));
-        LinearLayout labels = new LinearLayout(service);
+        LinearLayout labels = new LinearLayout(overlayContext);
         labels.setOrientation(LinearLayout.VERTICAL);
         labels.setGravity(Gravity.CENTER_VERTICAL);
         labels.setPadding(dp(8), 0, 0, 0);
@@ -1337,24 +1340,24 @@ public final class FloatingOverlayManager {
 
         NotificationCard(IslandNotificationListener.NotificationItem item, int index) {
             this.item = item;
-            root = new LinearLayout(service);
+            root = new LinearLayout(overlayContext);
             root.setOrientation(LinearLayout.VERTICAL);
             root.setPadding(dp(11), dp(8), dp(11), dp(8));
             root.setElevation(dp(10));
             root.setBackground(surface(prefs.getInt("panel_bg_color", 0xF0181C27), dp(18),
                     prefs.getInt("border_color", prefs.getInt("accent_color", 0xFFD6A3FF)), dp(1)));
 
-            LinearLayout top = new LinearLayout(service);
+            LinearLayout top = new LinearLayout(overlayContext);
             top.setOrientation(LinearLayout.HORIZONTAL);
             top.setGravity(Gravity.CENTER_VERTICAL);
 
-            senderAvatar = new ImageView(service);
+            senderAvatar = new ImageView(overlayContext);
             senderAvatar.setScaleType(ImageView.ScaleType.CENTER_CROP);
             senderAvatar.setClipToOutline(true);
             senderAvatar.setBackground(surface(prefs.getInt("avatar_bg_color", 0xFF252A36), dp(12), 0, 0));
             top.addView(senderAvatar, new LinearLayout.LayoutParams(dp(36), dp(36)));
 
-            LinearLayout labels = new LinearLayout(service);
+            LinearLayout labels = new LinearLayout(overlayContext);
             labels.setOrientation(LinearLayout.VERTICAL);
             labels.setGravity(Gravity.CENTER_VERTICAL);
             labels.setPadding(dp(8), 0, dp(5), 0);
@@ -1366,7 +1369,7 @@ public final class FloatingOverlayManager {
             labels.addView(senderLabel, new LinearLayout.LayoutParams(-1, -2));
             top.addView(labels, new LinearLayout.LayoutParams(0, dp(38), 1));
 
-            appIcon = new ImageView(service);
+            appIcon = new ImageView(overlayContext);
             appIcon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
             appIcon.setBackground(surface(prefs.getInt("avatar_bg_color", 0xFF252A36), dp(8), 0, 0));
             top.addView(appIcon, new LinearLayout.LayoutParams(dp(25), dp(25)));
@@ -1380,7 +1383,7 @@ public final class FloatingOverlayManager {
             bodyLabel.setOnClickListener(v -> IslandNotificationListener.openNotification(this.item.key));
             root.addView(bodyLabel, new LinearLayout.LayoutParams(-1, dp(34)));
 
-            actions = new LinearLayout(service);
+            actions = new LinearLayout(overlayContext);
             actions.setOrientation(LinearLayout.HORIZONTAL);
             actions.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
             TextView reply = button("Trả lời", prefs.getInt("reply_color", prefs.getInt("accent_color", 0xFFD6A3FF)));
@@ -1399,10 +1402,10 @@ public final class FloatingOverlayManager {
             actions.addView(open, openLp);
             root.addView(actions, new LinearLayout.LayoutParams(-1, dp(32)));
 
-            replyRow = new LinearLayout(service);
+            replyRow = new LinearLayout(overlayContext);
             replyRow.setOrientation(LinearLayout.HORIZONTAL);
             replyRow.setGravity(Gravity.CENTER_VERTICAL);
-            replyInput = new EditText(service);
+            replyInput = new EditText(overlayContext);
             replyInput.setSingleLine(true);
             replyInput.setTextSize(11);
             replyInput.setTextColor(prefs.getInt("text_color", Color.WHITE));
@@ -1655,13 +1658,22 @@ public final class FloatingOverlayManager {
     }
 
     private WindowManager.LayoutParams overlayParams(int width, int height) {
-        int type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
-        WindowManager.LayoutParams p = new WindowManager.LayoutParams(width, height, type,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+        boolean accessibilityOverlay = overlayContext instanceof AyaneAccessibilityService;
+        int type = accessibilityOverlay
+                ? WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+                : WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        int flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+        if (accessibilityOverlay) flags |= WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS;
+        WindowManager.LayoutParams p = new WindowManager.LayoutParams(width, height, type, flags,
                 PixelFormat.TRANSLUCENT);
         p.gravity = Gravity.TOP | Gravity.LEFT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            p.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            p.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
         p.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE;
         return p;
     }
@@ -1707,7 +1719,7 @@ public final class FloatingOverlayManager {
     }
 
     private TextView text(String value, int size, int color, boolean bold) {
-        TextView v = new TextView(service);
+        TextView v = new TextView(overlayContext);
         v.setText(value);
         v.setTextSize(size);
         v.setTextColor(color);

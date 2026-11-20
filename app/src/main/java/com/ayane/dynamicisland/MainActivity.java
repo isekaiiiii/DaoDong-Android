@@ -53,6 +53,9 @@ public class MainActivity extends Activity {
     private static final int GOLD = Color.rgb(255, 195, 105);
     private static final int PICK_ISLAND_ICON = 42;
     private static final int PICK_SHORTCUT_ICON = 43;
+    public static final String ACTION_PICK_DROIDBAR_APPS = "com.ayane.dynamicisland.PICK_DROIDBAR_APPS";
+    public static final String ACTION_REQUEST_TORCH_PERMISSION = "com.ayane.dynamicisland.REQUEST_TORCH_PERMISSION";
+    private static final int REQUEST_TORCH_PERMISSION = 54;
 
     private SharedPreferences prefs;
     private TextView permissionStatus;
@@ -72,6 +75,11 @@ public class MainActivity extends Activity {
         accent = prefs.getInt("accent_color", PURPLE);
         buildScreen();
         requestNotificationPermissionIfNeeded();
+        if (ACTION_PICK_DROIDBAR_APPS.equals(getIntent() == null ? null : getIntent().getAction())) {
+            page.post(this::showDroidbarAppPicker);
+        } else if (ACTION_REQUEST_TORCH_PERMISSION.equals(getIntent() == null ? null : getIntent().getAction())) {
+            page.post(this::requestTorchPermission);
+        }
     }
 
     @Override
@@ -79,6 +87,15 @@ public class MainActivity extends Activity {
         super.onResume();
         if (permissionStatus != null) updatePermissionStatus();
         if (runningStatus != null) updateRunningStatus();
+        if (prefs != null && prefs.getBoolean("enable_after_accessibility", false)) {
+            prefs.edit().remove("enable_after_accessibility").apply();
+            if (AyaneAccessibilityService.isEnabled(this)
+                    && Settings.canDrawOverlays(this)
+                    && IslandNotificationListener.isEnabled(this)) {
+                startIslandService();
+                toast("Đã bật Ayane ở chế độ mở rộng");
+            }
+        }
     }
 
     private void buildScreen() {
@@ -102,18 +119,18 @@ public class MainActivity extends Activity {
         LinearLayout brandLabels = new LinearLayout(this);
         brandLabels.setOrientation(LinearLayout.VERTICAL);
         brandLabels.setPadding(dp(12), 0, 0, 0);
-        TextView eyebrow = text("AYANE BLOSSOM  ·  ĐẢO ĐỘNG", 9, accent, true);
+        TextView eyebrow = text("AYANE DYNAMIC ISLAND  ·  ULTIMATE", 9, accent, true);
         eyebrow.setLetterSpacing(0.10f);
         brandLabels.addView(eyebrow);
         TextView title = text("Ayane", 29, Color.WHITE, true);
         brandLabels.addView(title, fullWidthTop(-2, 1));
         brandRow.addView(brandLabels, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView version = text("CAO CẤP 2.4", 9, 0xFFF0D9FF, true);
+        TextView version = text("ULTIMATE 2.6", 9, 0xFFF0D9FF, true);
         version.setPadding(dp(10), dp(7), dp(10), dp(7));
         version.setBackground(roundRect(0x332C1E3E, dp(30), 0x88C58CFF, dp(1)));
         brandRow.addView(version);
         addTop(page, brandRow, 2);
-        addTop(page, text("Đảo động mượt mà · riêng tư · cá nhân hóa", 12, 0xFFB8B2C6, false), 8);
+        addTop(page, text("Đảo động thích ứng · hoạt động trực tiếp · cá nhân hóa", 12, 0xFFB8B2C6, false), 8);
 
         LinearLayout hero = card();
         GradientDrawable heroGradient = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
@@ -155,11 +172,13 @@ public class MainActivity extends Activity {
         hero.addView(stop, fullWidthTop(44, 8));
         page.addView(hero, fullWidthTop(-2, 20));
 
-        addSectionTitle(page, "01", "Quyền & hoạt động nền", "Cấp quyền để đảo động hiển thị và nhận thông báo khi bạn rời ứng dụng.");
+        addSectionTitle(page, "01", "Quyền & hoạt động nền", "Cấp quyền cửa sổ nổi và thông báo; bật Trợ năng để mở rộng đảo vào vùng camera/thanh trạng thái.");
         LinearLayout permissions = card();
         permissions.setOrientation(LinearLayout.VERTICAL);
         permissions.setPadding(dp(14), dp(8), dp(14), dp(12));
-        addPermissionRow(permissions, "Cho phép Ayane hiển thị nổi & thao tác trên màn hình", "Mở Quyền truy cập đặc biệt → Hiển thị trên ứng dụng khác → bật Cho phép hiển thị trên ứng dụng khác cho Ayane. Không cần bật Trợ năng.", 0);
+        addPermissionRow(permissions, "Hiển thị trên ứng dụng khác", "Quyền cửa sổ nổi để Ayane vẽ thẻ và nhận thao tác chạm/kéo.", 0);
+        addDivider(permissions);
+        addPermissionRow(permissions, "Trợ năng Ayane · chế độ mở rộng", "Dùng cửa sổ trợ năng phủ vùng camera/thanh trạng thái, nhận biết khi chuyển ứng dụng và làm mới nhạc/video. Có thao tác hệ thống và chụp màn hình khi bạn chủ động bấm; không đọc cây giao diện hay văn bản.", 4);
         addDivider(permissions);
         addPermissionRow(permissions, "Truy cập thông báo", "Cho phép Ayane nhận từng thông báo, biểu tượng ứng dụng, tên người gửi và nút trả lời nếu ứng dụng nguồn hỗ trợ", 1);
         addDivider(permissions);
@@ -173,7 +192,29 @@ public class MainActivity extends Activity {
         permissions.addView(battery, fullWidthTop(44, 10));
         page.addView(permissions, fullWidthTop(-2, 8));
 
-        addSectionTitle(page, "02", "Kích thước, vị trí & chuyển động", "Tinh chỉnh vùng đảo, hiệu ứng nảy và cảm giác chạm theo phong cách Ayane.");
+        addSectionTitle(page, "02", "Thao tác hệ thống", "Các thao tác nhanh dùng Trợ năng Ayane; cần bật dịch vụ ở phần quyền phía trên.");
+        LinearLayout systemActions = card();
+        systemActions.setOrientation(LinearLayout.VERTICAL);
+        systemActions.setPadding(dp(14), dp(10), dp(14), dp(12));
+        LinearLayout systemRowOne = row();
+        Button openShade = smallButton("BẢNG THÔNG BÁO");
+        openShade.setOnClickListener(v -> runAccessibilityAction(AyaneAccessibilityService.openNotificationShade(), "Không mở được bảng thông báo. Hãy bật Trợ năng Ayane."));
+        Button openQuick = smallButton("CÀI ĐẶT NHANH");
+        openQuick.setOnClickListener(v -> runAccessibilityAction(AyaneAccessibilityService.openQuickSettings(), "Không mở được Cài đặt nhanh. Hãy bật Trợ năng Ayane."));
+        systemRowOne.addView(openShade, new LinearLayout.LayoutParams(0, dp(44), 1));
+        systemRowOne.addView(openQuick, new LinearLayout.LayoutParams(0, dp(44), 1));
+        systemActions.addView(systemRowOne);
+        LinearLayout systemRowTwo = row();
+        Button recentApps = smallButton("ỨNG DỤNG GẦN ĐÂY");
+        recentApps.setOnClickListener(v -> runAccessibilityAction(AyaneAccessibilityService.openRecentApps(), "Không mở được Ứng dụng gần đây. Hãy bật Trợ năng Ayane."));
+        Button splitScreen = smallButton("CHIA ĐÔI MÀN HÌNH");
+        splitScreen.setOnClickListener(v -> runAccessibilityAction(AyaneAccessibilityService.toggleSplitScreen(), "Thao tác này không được thiết bị hỗ trợ hoặc Trợ năng chưa bật."));
+        systemRowTwo.addView(recentApps, new LinearLayout.LayoutParams(0, dp(44), 1));
+        systemRowTwo.addView(splitScreen, new LinearLayout.LayoutParams(0, dp(44), 1));
+        systemActions.addView(systemRowTwo, fullWidthTop(-2, 8));
+        page.addView(systemActions, fullWidthTop(-2, 8));
+
+        addSectionTitle(page, "03", "Kích thước, vị trí & chuyển động", "Tinh chỉnh vùng đảo, hiệu ứng nảy và cảm giác chạm theo phong cách Ayane.");
         LinearLayout dimensions = card();
         dimensions.setOrientation(LinearLayout.VERTICAL);
         dimensions.setPadding(dp(15), dp(12), dp(15), dp(14));
@@ -183,7 +224,7 @@ public class MainActivity extends Activity {
         addSlider(dimensions, "Chiều rộng khi mở rộng", "expanded_width", 220, 620, 420, " dp");
         addSlider(dimensions, "Chiều cao khi mở rộng", "expanded_height", 150, 700, 330, " dp");
         addSlider(dimensions, "Vị trí ngang · trái (−) / phải (+)", "x", -420, 420, 0, " dp");
-        addSlider(dimensions, "Vị trí dọc · lên (−) / xuống (+)", "y", -900, 900, -4, " dp");
+        addSlider(dimensions, "Vị trí dọc · lên (−) / xuống (+)", "y", -1400, 900, -4, " dp");
         addSlider(dimensions, "Độ bo góc", "corner_radius", 12, 88, 38, " dp");
         addSlider(dimensions, "Độ dày viền", "border_width", 0, 5, 1, " dp");
         Button center = outlineButton("CĂN GIỮA ĐẢO ĐỘNG");
@@ -544,7 +585,7 @@ public class MainActivity extends Activity {
         });
         page.addView(demo, fullWidthTop(50, 20));
 
-        TextView footer = text("QUYỀN RIÊNG TƯ\nAyane xử lý nội dung thông báo ngay trên thiết bị để hiển thị và thực hiện thao tác mà ứng dụng gửi hỗ trợ. Bản này không khai báo quyền Internet và không gửi thông báo lên máy chủ. Quyền Truy cập thông báo cho phép đọc nội dung thông báo; chỉ bật khi bạn đồng ý. Ayane không dùng Trợ năng (Accessibility).", 10, 0xFF858A99, false);
+        TextView footer = text("QUYỀN RIÊNG TƯ\nAyane xử lý thông báo và MediaSession ngay trên thiết bị. Dịch vụ Trợ năng là tùy chọn: chỉ nhận sự kiện đổi cửa sổ ứng dụng, không yêu cầu đọc nội dung cửa sổ và không đọc văn bản trên màn hình. Dịch vụ có thể gọi các thao tác hệ thống mà bạn bấm trong Ayane. Bản này không khai báo quyền Internet và không gửi dữ liệu lên máy chủ.",  10, 0xFF858A99, false);
         footer.setLineSpacing(dp(3), 1f);
         page.addView(footer, fullWidthTop(-2, 22));
 
@@ -643,7 +684,7 @@ public class MainActivity extends Activity {
             if (type == 0) {
                 new AlertDialog.Builder(this)
                         .setTitle("Cho phép thao tác nổi trên màn hình")
-                        .setMessage("Android sẽ mở phần Quyền truy cập đặc biệt. Chọn Ayane và bật Cho phép hiển thị trên ứng dụng khác. Quyền này giúp Ayane vẽ thẻ nổi và nhận thao tác chạm/kéo trực tiếp. Ayane không yêu cầu quyền Trợ năng.")
+                        .setMessage("Android sẽ mở Quyền truy cập đặc biệt. Chọn Ayane và bật Hiển thị trên ứng dụng khác. Đây là quyền để vẽ, chạm và kéo cửa sổ nổi; Trợ năng là quyền riêng, dùng cho chế độ phủ vùng camera/thanh trạng thái và thao tác hệ thống.")
                         .setPositiveButton("MỞ CÀI ĐẶT", (dialog, which) -> startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))))
                         .setNegativeButton("HỦY", null)
                         .show();
@@ -652,6 +693,16 @@ public class MainActivity extends Activity {
                         .setTitle("Cho phép Ayane đọc thông báo")
                         .setMessage("Ayane cần quyền này để hiển thị thông báo nổi và gửi thao tác trả lời nhanh mà ứng dụng gốc cho phép. Nội dung được xử lý trên thiết bị, không tải lên máy chủ. Hãy chọn Ayane trong danh sách rồi bật quyền.")
                         .setPositiveButton("MỞ CÀI ĐẶT", (dialog, which) -> startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)))
+                        .setNegativeButton("ĐỂ SAU", null)
+                        .show();
+            } else if (type == 4) {
+                new AlertDialog.Builder(this)
+                        .setTitle("Trợ năng Ayane · chế độ mở rộng")
+                        .setMessage("Khi bật, Android cho phép Ayane dùng TYPE_ACCESSIBILITY_OVERLAY để đặt đảo nổi vào vùng camera/thanh trạng thái, nhận biết khi bạn chuyển ứng dụng và làm mới MediaSession. Dịch vụ chỉ nhận sự kiện đổi cửa sổ; không đọc cây giao diện, văn bản hoặc mật khẩu. Nút Chụp màn hình trong thanh công cụ chỉ chụp sau khi bạn chủ động nhấn và lưu ảnh cục bộ vào Pictures/Ayane. Trợ năng không thay thế quyền Hiển thị trên ứng dụng khác.")
+                        .setPositiveButton("MỞ CÀI ĐẶT TRỢ NĂNG", (dialog, which) -> {
+                            try { startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); }
+                            catch (RuntimeException e) { toast("Không mở được Cài đặt Trợ năng"); }
+                        })
                         .setNegativeButton("ĐỂ SAU", null)
                         .show();
             } else if (type == 2) {
@@ -740,6 +791,10 @@ public class MainActivity extends Activity {
             SharedPreferences.Editor editor = prefs.edit().putBoolean(key, checked);
             if ("auto_start".equals(key)) editor.putBoolean("user_stopped", !checked);
             editor.apply();
+            if ("droidbar_enabled".equals(key) && checked && !IslandService.running) {
+                if (Settings.canDrawOverlays(this)) startIslandService();
+                else toast("Hãy cấp quyền Hiển thị trên ứng dụng khác trước");
+            }
             refreshIsland();
         });
         r.addView(toggle);
@@ -809,6 +864,18 @@ public class MainActivity extends Activity {
                     .show();
             return;
         }
+        if (!AyaneAccessibilityService.isEnabled(this)) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Bật chế độ Ayane mở rộng?")
+                    .setMessage("Bật Trợ năng Ayane để dùng cửa sổ TYPE_ACCESSIBILITY_OVERLAY sát vùng camera/thanh trạng thái và tự làm mới nhạc/video khi bạn chuyển ứng dụng. Dịch vụ chỉ nhận sự kiện đổi cửa sổ, không đọc cây giao diện hay văn bản. Bạn vẫn có thể chạy chế độ cơ bản chỉ với quyền hiển thị nổi.")
+                    .setPositiveButton("BẬT TRỢ NĂNG", (dialog, which) -> {
+                        prefs.edit().putBoolean("enable_after_accessibility", true).apply();
+                        startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+                    })
+                    .setNegativeButton("DÙNG CHẾ ĐỘ CƠ BẢN", (dialog, which) -> startIslandService())
+                    .show();
+            return;
+        }
         startIslandService();
     }
 
@@ -838,6 +905,70 @@ public class MainActivity extends Activity {
         }
     }
 
+
+    private void requestTorchPermission() {
+        if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Quyền đèn pin")
+                    .setMessage("Ayane chỉ dùng quyền camera để bật/tắt đèn LED của điện thoại. Ayane không chụp ảnh hoặc quay video.")
+                    .setPositiveButton("CHO PHÉP", (dialog, which) -> requestPermissions(
+                            new String[]{Manifest.permission.CAMERA}, REQUEST_TORCH_PERMISSION))
+                    .setNegativeButton("HỦY", null)
+                    .show();
+        } else {
+            DroidbarOverlayManager.toggleTorchAfterPermission(this);
+        }
+    }
+
+    private void showDroidbarAppPicker() {
+        Intent launcher = new Intent(Intent.ACTION_MAIN, null);
+        launcher.addCategory(Intent.CATEGORY_LAUNCHER);
+        PackageManager pm = getPackageManager();
+        List<ResolveInfo> results;
+        try { results = pm.queryIntentActivities(launcher, 0); }
+        catch (RuntimeException e) { toast("Không thể tải danh sách ứng dụng"); return; }
+        ArrayList<ResolveInfo> apps = new ArrayList<>(results);
+        Collections.sort(apps, (a, b) -> String.valueOf(a.loadLabel(pm)).compareToIgnoreCase(String.valueOf(b.loadLabel(pm))));
+        ArrayList<String> labels = new ArrayList<>();
+        ArrayList<String> packages = new ArrayList<>();
+        for (ResolveInfo info : apps) {
+            if (info.activityInfo == null) continue;
+            String pkg = info.activityInfo.packageName;
+            if (pkg == null || pkg.isEmpty() || pkg.equals(getPackageName()) || packages.contains(pkg)) continue;
+            packages.add(pkg);
+            labels.add(String.valueOf(info.loadLabel(pm)));
+        }
+        if (labels.isEmpty()) { toast("Không tìm thấy ứng dụng có thể ghim"); return; }
+        Set<String> current = new HashSet<>(prefs.getStringSet("droidbar_pinned_apps", Collections.<String>emptySet()));
+        boolean[] checked = new boolean[packages.size()];
+        for (int i = 0; i < packages.size(); i++) checked[i] = current.contains(packages.get(i));
+        new AlertDialog.Builder(this)
+                .setTitle("Ứng dụng ghim trên Droidbar · tối đa 4")
+                .setMultiChoiceItems(labels.toArray(new String[0]), checked, (dialog, which, value) -> checked[which] = value)
+                .setPositiveButton("LƯU", (dialog, which) -> {
+                    HashSet<String> selected = new HashSet<>();
+                    for (int i = 0; i < packages.size() && selected.size() < 4; i++) {
+                        if (checked[i]) selected.add(packages.get(i));
+                    }
+                    prefs.edit().putStringSet("droidbar_pinned_apps", selected).apply();
+                    refreshIsland();
+                    toast("Đã lưu ứng dụng ghim");
+                })
+                .setNegativeButton("HỦY", null)
+                .show();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_TORCH_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                DroidbarOverlayManager.toggleTorchAfterPermission(this);
+            } else {
+                toast("Bạn chưa cấp quyền đèn pin");
+            }
+        }
+    }
 
     private void chooseCustomIcon() {
         Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
@@ -990,10 +1121,22 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void runAccessibilityAction(boolean succeeded, String errorMessage) {
+        if (succeeded) {
+            toast("Đã gửi thao tác đến Android");
+        } else {
+            toast(errorMessage);
+            if (!AyaneAccessibilityService.isEnabled(this)) {
+                startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+            }
+        }
+    }
+
     private void updatePermissionStatus() {
         if (permissionStatus == null) return;
         boolean overlay = Settings.canDrawOverlays(this);
         boolean listener = IslandNotificationListener.isEnabled(this);
+        boolean accessibility = AyaneAccessibilityService.isEnabled(this);
         boolean ignoringBattery = false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
@@ -1001,6 +1144,7 @@ public class MainActivity extends Activity {
         }
         int appCount = getLauncherAppCount();
         String state = "Hiển thị nổi: " + (overlay ? "ĐÃ CẤP" : "CHƯA CẤP")
+                + "  •  Trợ năng mở rộng: " + (accessibility ? "ĐÃ BẬT" : "CHƯA BẬT")
                 + "  •  Thông báo: " + (listener ? "ĐÃ CẤP" : "CHƯA CẤP")
                 + "  •  Ứng dụng có biểu tượng: " + appCount
                 + "  •  Tối ưu pin: " + (ignoringBattery ? "Không hạn chế" : "Theo hệ thống");

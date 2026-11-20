@@ -44,6 +44,8 @@ import java.util.Locale;
 
 public class IslandService extends Service {
     public static volatile boolean running = false;
+    private static volatile IslandService activeInstance;
+    private AyaneAccessibilityService accessibilityService;
     public static final String ACTION_START = "com.ayane.dynamicisland.START";
     public static final String ACTION_REFRESH = "com.ayane.dynamicisland.REFRESH";
     public static final String ACTION_STOP = "com.ayane.dynamicisland.STOP";
@@ -78,6 +80,7 @@ public class IslandService extends Service {
     private Button dismissButton;
     private SharedPreferences prefs;
     private FloatingOverlayManager floatingOverlayManager;
+    private DroidbarOverlayManager droidbarOverlayManager;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean expanded = false;
     private boolean receiverRegistered = false;
@@ -118,6 +121,7 @@ public class IslandService extends Service {
     private final Runnable ticker = new Runnable() {
         @Override public void run() {
             updateContent();
+            if (droidbarOverlayManager != null) droidbarOverlayManager.update();
             handler.postDelayed(this, 1000);
         }
     };
@@ -126,9 +130,12 @@ public class IslandService extends Service {
     public void onCreate() {
         super.onCreate();
         running = true;
+        activeInstance = this;
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        accessibilityService = AyaneAccessibilityService.instance;
+        windowManager = createWindowManagerForCurrentMode();
         floatingOverlayManager = new FloatingOverlayManager(this, windowManager, prefs);
+        droidbarOverlayManager = new DroidbarOverlayManager(this, windowManager, prefs);
         createNotificationChannel();
         try {
             IntentFilter dataFilter = new IntentFilter(IslandNotificationListener.ACTION_DATA_CHANGED);
@@ -165,7 +172,65 @@ public class IslandService extends Service {
         if (islandRoot == null) createIsland();
         else applySettings();
         updateContent();
+        if (droidbarOverlayManager != null) droidbarOverlayManager.update();
         return START_STICKY;
+    }
+
+    private Context getOverlayContext() {
+        return accessibilityService != null ? accessibilityService : this;
+    }
+
+    private WindowManager createWindowManagerForCurrentMode() {
+        Context context = getOverlayContext();
+        return (WindowManager) context.getSystemService(WINDOW_SERVICE);
+    }
+
+    public static void onAccessibilityServiceChanged(AyaneAccessibilityService service) {
+        IslandService current = activeInstance;
+        if (current != null) current.rebuildOverlayForAccessibility(service);
+    }
+
+    public static void onAccessibleWindowChanged() {
+        IslandService current = activeInstance;
+        if (current != null) current.refreshAfterWindowChange();
+    }
+
+    private void refreshAfterWindowChange() {
+        handler.post(() -> {
+            if (!running) return;
+            updateContent();
+            if (floatingOverlayManager != null) floatingOverlayManager.update();
+            if (droidbarOverlayManager != null) droidbarOverlayManager.update();
+        });
+    }
+
+    private void rebuildOverlayForAccessibility(AyaneAccessibilityService service) {
+        if (accessibilityService == service) return;
+        boolean hadIsland = islandRoot != null;
+        WindowManager oldManager = windowManager;
+        if (islandRoot != null && oldManager != null) {
+            try { oldManager.removeView(islandRoot); } catch (RuntimeException ignored) { }
+            islandRoot = null;
+        }
+        if (floatingOverlayManager != null) {
+            try { floatingOverlayManager.close(); } catch (RuntimeException ignored) { }
+            floatingOverlayManager = null;
+        }
+        if (droidbarOverlayManager != null) {
+            try { droidbarOverlayManager.close(); } catch (RuntimeException ignored) { }
+            droidbarOverlayManager = null;
+        }
+
+        accessibilityService = service;
+        windowManager = createWindowManagerForCurrentMode();
+        floatingOverlayManager = new FloatingOverlayManager(this, windowManager, prefs);
+        droidbarOverlayManager = new DroidbarOverlayManager(this, windowManager, prefs);
+
+        if (hadIsland && Settings.canDrawOverlays(this)) {
+            createIsland();
+            updateContent();
+        }
+        if (droidbarOverlayManager != null) droidbarOverlayManager.update();
     }
 
     private void startAsForeground() {
@@ -201,14 +266,14 @@ public class IslandService extends Service {
     }
 
     private void createIsland() {
-        islandRoot = new LinearLayout(this);
+        islandRoot = new LinearLayout(getOverlayContext());
         islandRoot.setOrientation(LinearLayout.VERTICAL);
         islandRoot.setGravity(Gravity.CENTER_VERTICAL);
         islandRoot.setPadding(dp(13), dp(4), dp(13), dp(4));
         islandRoot.setElevation(dp(12));
         islandRoot.setClickable(true);
 
-        topRow = new LinearLayout(this);
+        topRow = new LinearLayout(getOverlayContext());
         topRow.setOrientation(LinearLayout.HORIZONTAL);
         topRow.setGravity(Gravity.CENTER_VERTICAL);
         compactText = makeText("Ayane", 13, Color.WHITE, true);
@@ -218,22 +283,25 @@ public class IslandService extends Service {
         compactText.setPadding(dp(3), 0, dp(3), 0);
         rightText = makeText("●", 11, 0xFF8CE6AE, true);
         rightText.setGravity(Gravity.CENTER);
-        appIconView = new ImageView(this);
+        appIconView = new ImageView(getOverlayContext());
         appIconView.setScaleType(ImageView.ScaleType.CENTER_CROP);
         appIconView.setBackground(makeRoundDrawable(0xFF222530, dp(8), 0x00000000, 0));
         appIconView.setClipToOutline(true);
         appIconView.setContentDescription("Mở thông báo hiện tại");
         appIconView.setOnClickListener(v -> IslandNotificationListener.openLatest());
         rebuildTopRow();
+        topRow.setOnTouchListener(this::handleTouch);
+        compactText.setOnTouchListener(this::handleTouch);
+        rightText.setOnTouchListener(this::handleTouch);
         islandRoot.addView(topRow, new LinearLayout.LayoutParams(-1, dp(prefs.getInt("height", 62))));
 
-        expandedPanel = new LinearLayout(this);
+        expandedPanel = new LinearLayout(getOverlayContext());
         expandedPanel.setOrientation(LinearLayout.VERTICAL);
         expandedPanel.setPadding(dp(8), dp(10), dp(8), dp(5));
-        LinearLayout notificationHeader = new LinearLayout(this);
+        LinearLayout notificationHeader = new LinearLayout(getOverlayContext());
         notificationHeader.setOrientation(LinearLayout.HORIZONTAL);
         notificationHeader.setGravity(Gravity.CENTER_VERTICAL);
-        senderAvatarView = new ImageView(this);
+        senderAvatarView = new ImageView(getOverlayContext());
         senderAvatarView.setScaleType(ImageView.ScaleType.CENTER_CROP);
         senderAvatarView.setBackground(makeRoundDrawable(0xFF252A36, dp(13), 0x00000000, 0));
         senderAvatarView.setClipToOutline(true);
@@ -247,7 +315,7 @@ public class IslandService extends Service {
         notificationHeader.addView(detailsText, new LinearLayout.LayoutParams(0, -2, 1));
         expandedPanel.addView(notificationHeader, new LinearLayout.LayoutParams(-1, -2));
 
-        notificationNavigation = new LinearLayout(this);
+        notificationNavigation = new LinearLayout(getOverlayContext());
         notificationNavigation.setOrientation(LinearLayout.HORIZONTAL);
         notificationNavigation.setGravity(Gravity.CENTER_VERTICAL);
         notificationNavigation.setPadding(0, dp(4), 0, dp(2));
@@ -282,16 +350,16 @@ public class IslandService extends Service {
         notificationNavigation.addView(nextNotificationText, new LinearLayout.LayoutParams(dp(34), dp(34)));
         expandedPanel.addView(notificationNavigation, new LinearLayout.LayoutParams(-1, -2));
 
-        mediaControls = new LinearLayout(this);
+        mediaControls = new LinearLayout(getOverlayContext());
         mediaControls.setOrientation(LinearLayout.HORIZONTAL);
         mediaControls.setGravity(Gravity.CENTER_VERTICAL);
         mediaControls.setPadding(0, dp(6), 0, dp(2));
-        mediaArtView = new ImageView(this);
+        mediaArtView = new ImageView(getOverlayContext());
         mediaArtView.setScaleType(ImageView.ScaleType.CENTER_CROP);
         mediaArtView.setBackground(makeRoundDrawable(0xFF252A36, dp(10), 0x00000000, 0));
         mediaArtView.setClipToOutline(true);
         mediaControls.addView(mediaArtView, new LinearLayout.LayoutParams(dp(42), dp(42)));
-        LinearLayout mediaMeta = new LinearLayout(this);
+        LinearLayout mediaMeta = new LinearLayout(getOverlayContext());
         mediaMeta.setOrientation(LinearLayout.VERTICAL);
         mediaMeta.setGravity(Gravity.CENTER_VERTICAL);
         mediaMeta.setPadding(dp(8), 0, dp(5), 0);
@@ -322,7 +390,7 @@ public class IslandService extends Service {
         mediaControls.addView(nextButton, new LinearLayout.LayoutParams(dp(34), dp(40)));
         expandedPanel.addView(mediaControls, new LinearLayout.LayoutParams(-1, -2));
 
-        replyInput = new EditText(this);
+        replyInput = new EditText(getOverlayContext());
         replyInput.setSingleLine(true);
         replyInput.setTextSize(12);
         replyInput.setTextColor(prefs.getInt("text_color", Color.WHITE));
@@ -337,7 +405,7 @@ public class IslandService extends Service {
         replyInput.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) enableKeyboardMode();
         });
-        notificationActions = new LinearLayout(this);
+        notificationActions = new LinearLayout(getOverlayContext());
         notificationActions.setOrientation(LinearLayout.HORIZONTAL);
         notificationActions.setGravity(Gravity.CENTER_VERTICAL);
         notificationActions.setPadding(0, dp(7), 0, dp(2));
@@ -360,16 +428,29 @@ public class IslandService extends Service {
         islandRoot.setOnTouchListener(this::handleTouch);
         applyBackground();
 
-        int type = Build.VERSION.SDK_INT >= 26
-                ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                : WindowManager.LayoutParams.TYPE_PHONE;
+        int type;
+        if (accessibilityService != null) {
+            type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY;
+        } else if (Build.VERSION.SDK_INT >= 26) {
+            type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        } else {
+            type = WindowManager.LayoutParams.TYPE_PHONE;
+        }
+        int overlayFlags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+        if (accessibilityService != null) {
+            overlayFlags |= WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS;
+        }
         windowParams = new WindowManager.LayoutParams(
                 dp(prefs.getInt("width", 250)), dp(prefs.getInt("height", 64)), type,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
-                PixelFormat.TRANSLUCENT);
+                overlayFlags, PixelFormat.TRANSLUCENT);
         windowParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            windowParams.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            windowParams.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
         windowParams.x = dp(prefs.getInt("x", 0));
         windowParams.y = dp(prefs.getInt("y", -4));
         windowParams.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE;
@@ -418,10 +499,12 @@ public class IslandService extends Service {
                 if (Math.abs(dx) > dp(5) || Math.abs(dy) > dp(5)) dragged = true;
                 if (allowDrag && dragged && windowManager != null) {
                     android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
-                    windowManager.getDefaultDisplay().getMetrics(metrics);
+                    if (accessibilityService != null) windowManager.getDefaultDisplay().getRealMetrics(metrics);
+                    else windowManager.getDefaultDisplay().getMetrics(metrics);
                     int maxOffsetX = Math.max(0, (metrics.widthPixels - windowParams.width) / 2);
                     int maxOffsetY = Math.max(0, metrics.heightPixels - windowParams.height);
-                    int minOffsetY = -Math.min(dp(900), metrics.heightPixels / 2);
+                    int upwardRange = accessibilityService != null ? dp(1400) : dp(900);
+                    int minOffsetY = -Math.min(upwardRange, metrics.heightPixels);
                     windowParams.x = Math.max(-maxOffsetX, Math.min(maxOffsetX, startWindowX + dx));
                     windowParams.y = Math.max(minOffsetY, Math.min(maxOffsetY, startWindowY + dy));
                     try { windowManager.updateViewLayout(islandRoot, windowParams); } catch (Exception ignored) { }
@@ -484,12 +567,15 @@ public class IslandService extends Service {
         boolean idleCompact = islandIdle && prefs.getBoolean("idle_compact", true) && !expanded;
         int effectiveHeight = idleCompact ? dp(Math.max(32, Math.min(72, prefs.getInt("idle_height", 42)))) : height;
         int effectiveWidth = idleCompact ? Math.min(requestedWidth, dp(Math.max(72, Math.min(180, prefs.getInt("idle_width", 104))))) : requestedWidth;
-        android.util.DisplayMetrics metrics = getResources().getDisplayMetrics();
+        android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
+        if (accessibilityService != null) windowManager.getDefaultDisplay().getRealMetrics(metrics);
+        else windowManager.getDefaultDisplay().getMetrics(metrics);
         int maxScreenWidth = Math.max(dp(180), metrics.widthPixels - dp(12));
         windowParams.width = Math.min(expanded ? requestedExpandedWidth : effectiveWidth, maxScreenWidth);
         windowParams.height = expanded ? Math.min(height + expandedHeight, Math.max(height + dp(120), metrics.heightPixels - dp(24))) : effectiveHeight;
         int maxOffsetX = Math.max(0, (metrics.widthPixels - windowParams.width) / 2);
-        int minOffsetY = -Math.min(dp(900), metrics.heightPixels / 2);
+        int upwardRange = accessibilityService != null ? dp(1400) : dp(900);
+        int minOffsetY = -Math.min(upwardRange, metrics.heightPixels);
         int maxOffsetY = Math.max(0, metrics.heightPixels - windowParams.height);
         windowParams.x = Math.max(-maxOffsetX, Math.min(maxOffsetX, dp(prefs.getInt("x", 0))));
         windowParams.y = Math.max(minOffsetY, Math.min(maxOffsetY, dp(prefs.getInt("y", -4))));
@@ -845,7 +931,7 @@ public class IslandService extends Service {
     }
 
     private TextView makeText(String value, int size, int color, boolean bold) {
-        TextView text = new TextView(this);
+        TextView text = new TextView(getOverlayContext());
         text.setText(value);
         text.setTextSize(size);
         text.setTextColor(color);
@@ -855,7 +941,7 @@ public class IslandService extends Service {
     }
 
     private Button actionButton(String label, int color) {
-        Button button = new Button(this);
+        Button button = new Button(getOverlayContext());
         button.setText(label);
         button.setTextColor(Color.WHITE);
         button.setTextSize(10);
@@ -884,10 +970,15 @@ public class IslandService extends Service {
     @Override
     public void onDestroy() {
         running = false;
+        if (activeInstance == this) activeInstance = null;
         handler.removeCallbacks(ticker);
         if (floatingOverlayManager != null) {
             floatingOverlayManager.close();
             floatingOverlayManager = null;
+        }
+        if (droidbarOverlayManager != null) {
+            droidbarOverlayManager.close();
+            droidbarOverlayManager = null;
         }
         if (receiverRegistered) {
             try { unregisterReceiver(dataReceiver); } catch (Exception ignored) { }

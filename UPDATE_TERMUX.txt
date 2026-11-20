@@ -1,43 +1,29 @@
-AYANE BLOSSOM ULTIMATE 2.4.0 — CẬP NHẬT BẰNG TERMUX
+AYANE DYNAMIC ISLAND 2.6.0 - CẬP NHẬT BẰNG TERMUX
 
-LƯU Ý: Tải Ayane_Blossom_v2.4_Source.zip vào thư mục Download trước khi chạy lệnh.
-
-1) Vào Download và clone repository vào một thư mục làm việc MỚI:
+1) Tải Ayane_Dynamic_Island_v2.6_Source.zip vào thư mục Download.
+2) Mở Termux và chạy:
 
 cd ~/storage/downloads
-git clone https://github.com/isekaiiiii/DaoDong-Android.git Ayane-Blossom-v24
-cd Ayane-Blossom-v24
-
-2) Tin cậy thư mục này với Git (tránh lỗi dubious ownership):
-
+git clone https://github.com/isekaiiiii/DaoDong-Android.git Ayane-Dynamic-Island-v26
+cd Ayane-Dynamic-Island-v26
 git config --global --add safe.directory "$PWD"
-
-3) Xóa nội dung cũ trong thư mục clone nhưng giữ thư mục .git, rồi giải nén source v2.4:
-
-find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-unzip -o ~/storage/downloads/Ayane_Blossom_v2.4_Source.zip -d "$PWD"
-
-4) Kiểm tra các file gốc đã được giải nén:
-
-ls -la
-ls -la app
-
-Ở thư mục gốc cần có app/, .github/, build.gradle, settings.gradle, gradle.properties.
-
-5) Commit và đẩy source lên GitHub:
-
-git add -A
+unzip -o ~/storage/downloads/Ayane_Dynamic_Island_v2.6_Source.zip -d "$PWD"
 git status --short
-git commit -m "Upgrade Ayane Blossom 2.4"
+git add -A
+git commit -m "Upgrade Ayane Dynamic Island 2.6"
 git push origin main
 
-Nếu Git hỏi Username, nhập isekaiiiii. Nếu hỏi Password, nhập GitHub Personal Access Token (PAT), không dùng mật khẩu tài khoản GitHub. Khi dán PAT, Termux không hiển thị ký tự là bình thường. Không gửi PAT cho bất kỳ ai.
+3) Nếu git hỏi Username, nhập isekaiiiii. Nếu hỏi Password, dán GitHub Personal Access Token (không dùng mật khẩu tài khoản).
+4) Mở https://github.com/isekaiiiii/DaoDong-Android/actions
+5) Chờ workflow "Tạo APK Ayane Dynamic Island 2.6 · Droidtools-like" có dấu tích xanh.
+6) Tải Artifact "Ayane-Dynamic-Island-APK-v2.6", giải nén và cài app-debug.apk.
 
-Nếu git commit báo "nothing to commit", kiểm tra lại tên ZIP, vị trí tệp trong Download và cấu trúc thư mục; không tiếp tục push cho đến khi source v2.4 thực sự xuất hiện trong git status.
+Quyền sau khi cài:
+- Hiển thị trên ứng dụng khác: bắt buộc để vẽ, chạm và kéo đảo nổi.
+- Truy cập thông báo: để nhận thông báo, MediaSession và RemoteInput khi ứng dụng nguồn hỗ trợ.
+- Trợ năng Ayane: tùy chọn nâng cao; dùng TYPE_ACCESSIBILITY_OVERLAY để mở rộng vùng camera/thanh trạng thái và nhận sự kiện đổi ứng dụng. Dịch vụ không đọc cây giao diện hoặc văn bản. Chức năng chụp màn hình chỉ chạy khi bạn tự bấm nút trong Droidbar.
+- Android 13+: cho phép thông báo dịch vụ Ayane.
+- Camera: chỉ dùng cho đèn pin trong Droidbar.
+- Có thể chọn Không hạn chế tối ưu pin để giảm khả năng dịch vụ bị hệ thống dừng; không thể đảm bảo chạy tuyệt đối 24/7.
 
-6) Mở GitHub Actions:
-https://github.com/isekaiiiii/DaoDong-Android/actions
-
-Chọn workflow "Tạo APK Ayane Blossom 2.4". Sau khi có dấu tích xanh, mở lần chạy mới nhất → Artifacts → tải "Ayane-Blossom-APK-v2.4". Giải nén ZIP Artifact để lấy app-debug.apk.
-
-Nếu build lỗi, mở job "build", chọn bước có dấu X đỏ và gửi log lỗi (không gửi token hoặc thông tin bí mật).
+Lưu ý: nếu git commit báo nothing to commit, hãy kiểm tra git status --short và đảm bảo đã giải nén ZIP đúng vào thư mục repository. APK cần build thành công trên GitHub Actions trước khi cài.
