@@ -1,70 +1,56 @@
-# AYANE DYNAMIC ISLAND — ULTIMATE 2.7.0
+# Ayane — Đảo động cho Android
 
-Ayane là ứng dụng Dynamic Island độc lập cho Android, viết bằng Java và Android SDK. Bản 2.7 sửa luồng thông báo theo kiểu heads-up của Droidbubble: đảo động chỉ bật ra khi có thông báo mới, tự thu gọn sau thời gian xem trước và không còn ghim danh sách thẻ tin nhắn trên toàn màn hình.
+**Ayane** là bản đổi thương hiệu và Việt hóa từ mã nguồn Droidtools do người dùng cung cấp. Ứng dụng dùng biểu tượng anime hoa anh đào do người dùng gửi, tên hiển thị `Ayane` và mã ứng dụng riêng `com.ayane.blossom` để có thể cài cạnh các bản Ayane cũ.
 
-## Điểm mới trong 2.7
+## Tính năng chính
 
-- Thông báo mới xuất hiện ngay trong đảo động quanh vùng camera; không tạo bảng thông báo riêng cố định trên màn hình.
-- Có thể tự mở rộng để xem người gửi, ứng dụng, nội dung và thao tác trả lời nhanh/bỏ qua.
-- Mặc định tự thu gọn sau 5 giây; trong ứng dụng có thể chỉnh 3–12 giây.
-- Thông báo cũ vẫn nằm trong khay thông báo Android. Ayane không tự hủy thông báo khi hết thời gian xem trước.
-- Thông báo mới hơn thay thế phần xem trước cũ để tránh chồng lấp.
-- Khi không có hoạt động, đảo trở về trạng thái nhỏ gọn ở vùng camera.
-- Cuộc gọi và hẹn giờ/báo thức vẫn dùng thẻ hoạt động riêng; nhạc/video vẫn có trình phát riêng với ảnh bìa, nền mờ, thanh tua và nút điều khiển.
-- Sửa lỗi biên dịch của AccessibilityService: đổi helper tĩnh thành `invokeGlobalAction()` và sửa cú pháp thao tác chia đôi màn hình.
+- **Đảo động:** hiển thị gần vùng camera, thu gọn/mở rộng theo hoạt động, có thể tùy chỉnh kích thước, vị trí và hiệu ứng.
+- **Nhạc và video:** ảnh bìa, tên nội dung, thanh tiến trình và điều khiển MediaSession.
+- **Thông báo:** xem trước, mở rộng, mở ứng dụng và trả lời nhanh khi ứng dụng gửi thông báo hỗ trợ thao tác trả lời.
+- **Cuộc gọi, báo thức và hoạt động hệ thống:** hiển thị các trạng thái do Android và ứng dụng nguồn cung cấp.
+- **Thanh công cụ cạnh màn hình:** ứng dụng ghim, thao tác nhanh và phím tắt.
+- **Tác vụ tùy chỉnh:** tạo lối tắt để mở ứng dụng, điều khiển phương tiện và thực hiện các thao tác được hỗ trợ.
+- **Giao diện:** Material 3, phông chữ, kích thước, vị trí, hiệu ứng và thứ tự lớp có thể tùy chỉnh.
+- **Ghi màn hình:** chỉ bắt đầu sau khi người dùng xác nhận hộp thoại MediaProjection của Android.
 
-## Tính năng giữ lại
+## Yêu cầu
 
-- Nhận thông báo bằng `NotificationListenerService`, hiển thị tên ứng dụng, tên người gửi/ảnh đại diện nếu ứng dụng nguồn cung cấp.
-- Trả lời nhanh qua `RemoteInput` khi thông báo nguồn hỗ trợ.
-- Mở hoặc bỏ qua thông báo; xóa thông báo vẫn dùng thao tác Android do người dùng chủ động.
-- MediaSession: album art, tên nội dung, nghệ sĩ, trạng thái phát, tua, bài trước/bài tiếp khi phiên phát hỗ trợ.
-- Thẻ riêng cho cuộc gọi và hẹn giờ/báo thức khi thông báo nguồn có hành động thích hợp.
-- Trạng thái sạc, công suất/dòng điện/điện áp/nhiệt độ nếu thiết bị cung cấp; sự kiện chế độ chuông/rung.
-- Droidbar: đèn pin, bảng Internet của Android, chế độ chuông/rung, chụp màn hình sau thao tác chủ động, ứng dụng ghim.
-- Tùy chỉnh kích thước, vị trí, màu HEX, phông chữ và hiệu ứng.
+- Android 10 trở lên (minSdk 29; một số khả năng phụ thuộc phiên bản Android và giao diện của nhà sản xuất).
+- **Hiển thị trên ứng dụng khác:** để hiển thị cửa sổ đảo động.
+- **Quyền truy cập thông báo:** để đọc bản xem trước thông báo và trạng thái MediaSession.
+- **Quyền gửi thông báo:** để hiển thị thông báo dịch vụ nền trên Android 13 trở lên.
+- **Trợ năng (tùy chọn):** dùng để nhận biết thay đổi cửa sổ ứng dụng và cập nhật đảo động; cấu hình `canRetrieveWindowContent=false`, không đọc văn bản/cây giao diện.
+- **Shizuku (tùy chọn):** chỉ cho một số thao tác hệ thống nâng cao; người dùng phải tự cài và cấp quyền trong Shizuku.
+- **Bỏ qua tối ưu pin (tùy chọn):** giúp giảm khả năng Android dừng dịch vụ nền; không đảm bảo chạy liên tục tuyệt đối.
 
-## Cách thông báo hoạt động
+## Quyền riêng tư và kết nối mạng
 
-1. Khi `NotificationListenerService` nhận thông báo mới hợp lệ, Ayane đánh dấu thông báo đó là heads-up trong thời lượng đã đặt.
-2. `IslandService` lấy thông báo heads-up để bật đảo và có thể tự mở rộng bảng nội dung.
-3. Khi hết thời gian, thông báo heads-up hết hiệu lực và đảo thu về trạng thái chờ. Bản thông báo gốc vẫn ở Notification Drawer.
-4. Nếu người dùng chạm mở rộng hoặc bắt đầu trả lời, Ayane hủy bộ đếm tự thu gọn để không đóng giao diện giữa lúc tương tác.
-5. Cuộc gọi/báo thức được loại khỏi luồng tin nhắn thường và tiếp tục đi qua thẻ hoạt động riêng.
+- Không khai báo quyền ghi âm microphone. Ghi màn hình dùng MediaProjection và cần người dùng xác nhận bằng hộp thoại hệ thống.
+- Không thấy SDK quảng cáo hoặc analytics phổ biến trong danh sách phụ thuộc đã kiểm tra.
+- Kết nối mạng được dùng cho **Open-Meteo** (tra cứu địa danh/thời tiết khi bật tiện ích) và **GitHub Releases** (kiểm tra/tải bản cập nhật từ `isekaiiiii/DaoDong-Android`).
+- Trình cập nhật chỉ nhận APK tên `Ayane.apk` hoặc `Ayane-*.apk` từ đường dẫn phát hành của repository Ayane; chuyển hướng tải xuống chỉ được chấp nhận qua HTTPS trên các máy chủ GitHub Assets đã chỉ định. Android vẫn yêu cầu người dùng xác nhận cài đặt.
+- Không thấy luồng gửi SMS, danh bạ, thông báo hoặc nội dung màn hình đến máy chủ trong mã nguồn được rà soát.
+- Một số thao tác Shizuku chạy các lệnh `settings` cố định do người dùng chủ động bật; không còn cơ chế tự gọi `su -c`.
 
-## Quyền Android
+## Xây dựng APK
 
-- **Hiển thị trên ứng dụng khác**: tạo cửa sổ Dynamic Island nổi.
-- **Truy cập thông báo**: nhận nội dung/biểu tượng và hành động trả lời do ứng dụng nguồn cung cấp.
-- **Trợ năng Ayane (tùy chọn)**: nhận sự kiện đổi cửa sổ và dùng loại cửa sổ `TYPE_ACCESSIBILITY_OVERLAY` cho chế độ mở rộng; cấu hình không đọc cây giao diện hoặc văn bản của ứng dụng khác. Chụp màn hình chỉ khi người dùng chủ động bấm nút.
-- **Thông báo dịch vụ nền**: hiển thị thông báo thường trực của foreground service.
-- **Camera**: chỉ cần nếu người dùng bật đèn pin trong Droidbar.
+### Android Studio
 
-Không có quyền Internet được khai báo và không có máy chủ xác thực key. Việc không có quyền Internet giảm bề mặt truy cập mạng nhưng không tự chứng minh APK sạch tuyệt đối; cần quét file APK bằng công cụ bảo mật độc lập trước khi cài nếu cần xác minh.
+1. Giải nén ZIP.
+2. Android Studio → **Open** → chọn thư mục có `settings.gradle.kts`.
+3. Chờ Gradle Sync. Cài Android SDK Platform 36 và JDK 21 nếu Android Studio yêu cầu.
+4. Chọn **Build → Build Bundle(s) / APK(s) → Build APK(s)**.
 
-## Build APK bằng GitHub Actions
+APK debug đầu ra: `app/build/outputs/apk/debug/app-debug.apk`.
 
-1. Đưa toàn bộ nội dung project vào repository.
-2. Push nhánh `main` hoặc mở Actions và chạy workflow **Tạo APK Ayane Dynamic Island 2.7 · Heads-up**.
-3. Khi workflow có dấu tích xanh, tải artifact **Ayane-Dynamic-Island-APK-v2.7**.
-4. Giải nén artifact và cài `app-debug.apk`.
+### GitHub Actions
 
-## Thông tin kỹ thuật
+Workflow `.github/workflows/build-ayane.yml` tự chạy khi push lên nhánh `main` hoặc khi chọn chạy thủ công. Khi thành công, tải Artifact **Ayane-APK**, bên trong có tệp `Ayane.apk`.
 
-- Java / Android SDK
-- `compileSdk 35`, `targetSdk 35`, `minSdk 26`
-- Version: `2.7.0` (`versionCode 10`)
-- Application ID: `com.ayane.dynamicisland`
-- Không thêm thư viện runtime bên thứ ba.
+## Kiểm tra an toàn
 
-## Ghi chú tương thích
+Đã rà soát tĩnh Manifest, quyền, URL mạng, lệnh Shizuku, dịch vụ Trợ năng, MediaProjection và luồng cập nhật. Không có công cụ antivirus như ClamAV/VirusTotal trong môi trường tạo mã nguồn; do đó **không thể chứng nhận tuyệt đối không có virus**. Bản này cũng chưa được build/chạy trên thiết bị trong môi trường hiện tại. Hãy build bằng GitHub Actions hoặc Android Studio, sau đó quét APK thành phẩm bằng công cụ bảo mật độc lập trước khi cài.
 
-- Trả lời nhanh chỉ hoạt động khi thông báo gốc có `RemoteInput`.
-- Tên người gửi/avatar phụ thuộc dữ liệu mà ứng dụng gửi thông báo cung cấp.
-- Điều khiển nhạc/tua phụ thuộc MediaSession và hành động mà trình phát cung cấp.
-- Một số thông số sạc phụ thuộc phần cứng/firmware của thiết bị.
-- Android/OEM có thể giới hạn foreground service hoặc cửa sổ nổi theo chính sách pin và quyền riêng.
+## Nguồn gốc và giấy phép
 
-## Tham khảo hành vi
-
-Xem `DROIDTOOLS_REFERENCE.md` để biết các tính năng công khai của Droidtools được dùng làm tham chiếu. Ayane được triển khai độc lập bằng Java/Android SDK; không sao chép mã nguồn Kotlin/Compose của dự án tham khảo.
+Mã nguồn nền được lấy từ ZIP `droidtools-main.zip` người dùng cung cấp, dự án gốc: https://github.com/Velocity081/droidtools. README dự án gốc tuyên bố MIT, nhưng gói ZIP không chứa tệp `LICENSE` và đường dẫn LICENSE ở repository trả về 404 khi rà soát. Vì vậy không tự gắn giấy phép MIT cho bản Ayane; hãy xác minh với tác giả trước khi công khai phân phối hoặc thương mại hóa. Giữ ghi công nguồn gốc khi sử dụng.

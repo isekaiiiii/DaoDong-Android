@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="ayane_accessibility_title">Trợ năng Ayane · chế độ đảo mở rộng</string>
-    <string name="ayane_accessibility_description">Trợ năng tùy chọn của Ayane: chỉ nhận sự kiện chuyển ứng dụng, không đọc cây giao diện, văn bản, mật khẩu hoặc nội dung cửa sổ. Cho phép đặt đảo nổi qua vùng camera/thanh trạng thái và thực hiện thao tác hệ thống bạn chủ động chọn. Chụp màn hình chỉ diễn ra khi bạn nhấn nút Chụp màn hình trong thanh công cụ; ảnh được lưu trên thiết bị.</string>
+    <string name="app_name">Ayane</string>
+    <string name="accessibility_service_description">Cho phép Ayane nhận biết ứng dụng đang hiển thị và trạng thái khóa máy để điều chỉnh đảo động. Dịch vụ không đọc văn bản hoặc cây giao diện của cửa sổ.</string>
+    <string name="accessibility_service_title">Dịch vụ trợ năng Ayane</string>
 </resources>

@@ -1,0 +1,104 @@
+package com.ayane.dynamicisland.model
+
+val DEFAULT_FEATURE_PRIORITIES = listOf(
+    "CALL",
+    "MEDIA",
+    "PROGRESS",
+    "RECORDING",
+    "NOTIFICATION",
+    "FLASHLIGHT",
+    "PERSISTENT_CHARGING",
+    "ALARM",
+    "FPS",
+    "WEATHER",
+    "NETWORK_SPEED"
+)
+
+val DEFAULT_MEDIA_LAYERS = listOf(
+    "COVER_AND_TITLE",
+    "SLIDER",
+    "CONTROLS"
+)
+
+enum class DesignLanguage(val id: String, val displayName: String) {
+    DROIDBUBBLE("DROIDBUBBLE", "Ayane"),
+    GLASS("GLASS", "Ayane kính mờ"),
+    MATERIAL3("MATERIAL3", "Material 3")
+}
+
+data class IslandSettings(
+    val isEnabled: Boolean = true,
+    val widthDp: Int = 180,
+    val heightDp: Int = 36,
+    val cornerRadiusDp: Int = 22,
+    val topOffsetDp: Int = 12,
+    val horizontalOffsetDp: Int = 0,
+    val isLeftCutout: Boolean = false,
+    val isTeardropCutout: Boolean = false,
+    val showOutline: Boolean = true,
+    val outlineColorArgb: Long = 0x33FFFFFF, // Sleek translucent silver
+    val outlineThicknessDp: Float = 1.5f,
+    val expandedScale: Float = 1.1f,
+    val hapticsEnabled: Boolean = true,
+    val showCalls: Boolean = true,
+    val showMedia: Boolean = true,
+    val showNotifications: Boolean = false,
+    val showLiveProgress: Boolean = true,
+    val showScreenRecording: Boolean = true,
+    val showFlashlight: Boolean = true,
+    val showBluetooth: Boolean = true,
+    val showCharging: Boolean = true,
+    val showRingerMode: Boolean = true,
+    val showAirplaneMode: Boolean = true,
+    val showInLandscape: Boolean = false,
+    val animationSpeed: Float = 0.7f,
+    val blockedPackages: Set<String> = emptySet(),
+    val restartOnBoot: Boolean = true,
+    val bubbleEffectEnabled: Boolean = true,
+    val dismissMediaOnPause: Boolean = false,
+    val alwaysShowPill: Boolean = false,
+    val showDualActivityInCompact: Boolean = true,
+    val showFps: Boolean = false,
+    val showWeather: Boolean = false,
+    val showNetworkSpeed: Boolean = false,
+    val showAlarm: Boolean = true,
+    val autoDismissNotifications: Boolean = false,
+    val notificationAutoDismissSeconds: Int = 3,
+    val persistentCharging: Boolean = false,
+    val notificationMaxLines: Int = 2,
+    val weatherCity: String = "",
+    val fontKey: String = "DEFAULT",
+    val swapActivitiesOnSwipe: Boolean = true,
+    val blurredAlbumArtBackground: Boolean = false,
+    val designLanguage: DesignLanguage = DesignLanguage.MATERIAL3,
+    val glassEnabled: Boolean = false,
+    val glassOpacity: Int = 25,
+    val mediaWaveAnimation: Boolean = true,
+    val spinningAlbumArt: Boolean = false,
+    val wavyProgressBar: Boolean = true,
+    val hideOnLockScreen: Boolean = false,
+    val expandDamping: Float = 0.74f,
+    val expandStiffness: Float = 380f,
+    val appearDamping: Float = 0.6f,
+    val appearStiffness: Float = 280f,
+    val splitDamping: Float = 0.63f,
+    val splitStiffness: Float = 320f,
+    val featurePriorities: List<String> = DEFAULT_FEATURE_PRIORITIES,
+    val mediaControlAlignment: String = "CENTER",
+    val mediaLayersOrder: List<String> = DEFAULT_MEDIA_LAYERS,
+    val droidbarEnabled: Boolean = false,
+    val droidbarShowFlashlight: Boolean = true,
+    val droidbarShowRingMode: Boolean = true,
+    val droidbarShowScreenshot: Boolean = true,
+    val droidbarShowWifi: Boolean = true,
+    val droidbarShowMobileData: Boolean = true,
+    val droidbarUseMostUsedApps: Boolean = true,
+    val droidbarCustomApps: List<String> = emptyList(),
+    val droidbarBackgroundOpacity: Float = 1.0f,
+    val droidbarMaxHeightDp: Int = 600,
+    val droidbarYOffsetDp: Int = 0,
+    val droidbarHapticsEnabled: Boolean = true
+) {
+    val isGlass: Boolean get() = designLanguage == DesignLanguage.GLASS || glassEnabled
+    val isMaterial3: Boolean get() = designLanguage == DesignLanguage.MATERIAL3
+}

@@ -1,0 +1,290 @@
+package com.ayane.dynamicisland.tasks
+
+import android.view.HapticFeedbackConstants
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TasksPage(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val view = LocalView.current
+    val repository = remember { TasksRepository.getInstance(context) }
+    val shortcuts by repository.shortcuts.collectAsState()
+
+    var editingShortcut by remember { mutableStateOf<TaskShortcut?>(null) }
+    var isCreatingNew by remember { mutableStateOf(false) }
+    var shortcutToDelete by remember { mutableStateOf<TaskShortcut?>(null) }
+
+    BackHandler(onBack = {
+        if (isCreatingNew || editingShortcut != null) {
+            isCreatingNew = false
+            editingShortcut = null
+        } else {
+            onBack()
+        }
+    })
+
+    if (isCreatingNew || editingShortcut != null) {
+        TaskEditorScreen(
+            initialShortcut = editingShortcut,
+            onSave = { saved ->
+                repository.saveShortcut(saved)
+                editingShortcut = null
+                isCreatingNew = false
+            },
+            onBack = {
+                editingShortcut = null
+                isCreatingNew = false
+            },
+            modifier = modifier
+        )
+    } else {
+        Scaffold(
+            modifier = modifier,
+            topBar = {
+                TopAppBar(
+                    title = { Text("Tác vụ", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Quay lại"
+                            )
+                        }
+                    }
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = {
+                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                        isCreatingNew = true
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Lối tắt mới",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        ) { innerPadding ->
+            if (shortcuts.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(32.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(64.dp),
+                            shape = RoundedCornerShape(18.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.primary
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Bolt,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            text = "Chưa có lối tắt nào",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(shortcuts, key = { it.id }) { shortcut ->
+                        TaskShortcutCard(
+                            shortcut = shortcut,
+                            onRun = {
+                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                runCatching {
+                                    TaskExecutor.execute(context, shortcut)
+                                }.onFailure { e ->
+                                    android.util.Log.e("TasksPage", "Task error", e)
+                                }
+                            },
+                            onEdit = { editingShortcut = shortcut },
+                            onDelete = { shortcutToDelete = shortcut }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (shortcutToDelete != null) {
+        val s = shortcutToDelete!!
+        AlertDialog(
+            onDismissRequest = { shortcutToDelete = null },
+            title = { Text("Xóa lối tắt") },
+            text = { Text("Bạn có chắc muốn xóa lối tắt \"${s.name}\" không?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        repository.deleteShortcut(s.id)
+                        shortcutToDelete = null
+                    }
+                ) {
+                    Text("Xóa", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { shortcutToDelete = null }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun TaskShortcutCard(
+    shortcut: TaskShortcut,
+    onRun: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val scale = remember { Animatable(1f) }
+    val coroutineScope = rememberCoroutineScope()
+    var showMenu by remember { mutableStateOf(false) }
+
+    fun triggerBounce() {
+        coroutineScope.launch {
+            scale.animateTo(0.96f, tween(60))
+            scale.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = 600f))
+        }
+    }
+
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale.value
+                scaleY = scale.value
+            }
+            .clip(RoundedCornerShape(20.dp))
+            .clickable {
+                triggerBounce()
+                onRun()
+            }
+    ) {
+        ListItem(
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            headlineContent = {
+                Text(
+                    text = shortcut.name,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp
+                )
+            },
+            leadingContent = {
+                Surface(
+                    modifier = Modifier.size(42.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = TaskIcons.getIcon(shortcut.iconName),
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            },
+            trailingContent = {
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Tùy chọn",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Chạy") },
+                            leadingIcon = { Icon(Icons.Default.PlayArrow, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                triggerBounce()
+                                onRun()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Sửa") },
+                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onEdit()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Xóa", color = MaterialTheme.colorScheme.error) },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                            onClick = {
+                                showMenu = false
+                                onDelete()
+                            }
+                        )
+                    }
+                }
+            }
+        )
+    }
+}
