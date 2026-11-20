@@ -97,6 +97,16 @@ public class IslandService extends Service {
     private int startWindowY;
     private boolean dragged;
     private String lastContentSignature = "";
+    private String lastHeadsUpKey = "";
+    private boolean autoExpandedByNotification = false;
+    private final Runnable notificationAutoCollapse = () -> {
+        if (autoExpandedByNotification && !keyboardMode) {
+            autoExpandedByNotification = false;
+            expanded = false;
+            applySettings();
+            updateContent();
+        }
+    };
 
     private final BroadcastReceiver dataReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
@@ -521,6 +531,8 @@ public class IslandService extends Service {
                     updateContent();
                     animateContentChange();
                 } else if (!dragged) {
+                    autoExpandedByNotification = false;
+                    handler.removeCallbacks(notificationAutoCollapse);
                     expanded = !expanded;
                     applySettings();
                 }
@@ -533,6 +545,8 @@ public class IslandService extends Service {
 
     private void enableKeyboardMode() {
         if (keyboardMode || windowParams == null || islandRoot == null) return;
+        autoExpandedByNotification = false;
+        handler.removeCallbacks(notificationAutoCollapse);
         keyboardMode = true;
         windowParams.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
         try { windowManager.updateViewLayout(islandRoot, windowParams); } catch (Exception ignored) { }
@@ -674,7 +688,45 @@ public class IslandService extends Service {
         boolean showReply = prefs.getBoolean("show_reply_actions", true);
         boolean showDismiss = prefs.getBoolean("show_dismiss_action", true);
 
-        IslandNotificationListener.NotificationItem selected = IslandNotificationListener.getSelectedNotification();
+        boolean headsUpEnabled = showNotif && prefs.getBoolean("floating_notifications", true);
+        IslandNotificationListener.NotificationItem headsUp = headsUpEnabled
+                ? IslandNotificationListener.getHeadsUpNotification() : null;
+        IslandNotificationListener.NotificationItem latest = IslandNotificationListener.getSelectedNotification();
+        IslandNotificationListener.NotificationItem selected;
+        if (expanded) {
+            selected = latest;
+        } else if (headsUp != null) {
+            selected = headsUp;
+        } else if (latest != null && (latest.incomingCall || latest.ongoingCall || latest.timerOrAlarm)) {
+            selected = latest;
+        } else {
+            selected = null;
+        }
+
+        if (headsUp != null) {
+            if (!headsUp.key.equals(lastHeadsUpKey)) {
+                lastHeadsUpKey = headsUp.key;
+                if (!expanded && prefs.getBoolean("auto_expand_notifications", true)) {
+                    expanded = true;
+                    autoExpandedByNotification = true;
+                    applySettings();
+                }
+            }
+            if (autoExpandedByNotification) {
+                handler.removeCallbacks(notificationAutoCollapse);
+                long remaining = IslandNotificationListener.getHeadsUpRemainingMillis();
+                if (remaining > 0L) handler.postDelayed(notificationAutoCollapse, remaining + 120L);
+            }
+        } else {
+            lastHeadsUpKey = "";
+            if (autoExpandedByNotification && !keyboardMode) {
+                handler.removeCallbacks(notificationAutoCollapse);
+                autoExpandedByNotification = false;
+                expanded = false;
+                applySettings();
+            }
+        }
+
         String notification = selected == null ? "" : selected.title;
         String notificationText = selected == null ? "" : selected.text;
         String notificationSender = selected == null ? "" : selected.senderName;
@@ -972,6 +1024,7 @@ public class IslandService extends Service {
         running = false;
         if (activeInstance == this) activeInstance = null;
         handler.removeCallbacks(ticker);
+        handler.removeCallbacks(notificationAutoCollapse);
         if (floatingOverlayManager != null) {
             floatingOverlayManager.close();
             floatingOverlayManager = null;

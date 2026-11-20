@@ -1,19 +1,18 @@
-# Đối chiếu Droidtools cho Ayane 2.6
+# Đối chiếu hành vi Droidtools cho Ayane 2.7
 
-Nguồn công khai: https://github.com/Velocity081/droidtools
+Nguồn được tham khảo: https://github.com/Velocity081/droidtools
 
-Ayane tham khảo tính năng và luồng thiết kế được công khai trong README Droidtools/Droidbubble: media now-playing (ảnh bìa, tiêu đề, thanh tua, nút điều khiển, nền album mờ), thông báo heads-up và trả lời nhanh, sự kiện hệ thống, trạng thái rảnh, tùy chỉnh vị trí/kích thước/hiệu ứng/phông chữ/thứ tự lớp; cùng Droidbar dạng thanh công cụ cạnh với lối tắt hệ thống và ứng dụng ghim.
+README công khai của Droidtools mô tả Droidbubble như một Dynamic Island nằm yên quanh vùng camera khi không có hoạt động, sau đó bật ra khi có sự kiện. Các điểm được README nêu gồm:
 
-Phần Trợ năng được viết độc lập bằng Java. Cấu hình của Ayane:
-- Chỉ nhận `TYPE_WINDOW_STATE_CHANGED`.
-- `canRetrieveWindowContent=false`.
-- `canPerformGestures=false`.
-- `canTakeScreenshot=true` chỉ để hỗ trợ nút chụp màn hình do người dùng chủ động nhấn trong Droidbar; không chụp tự động.
+- Nội dung đang phát: ảnh bìa, tên bản nhạc, thanh tua và điều khiển phát; nền mờ lấy màu từ ảnh bìa.
+- Sự kiện hệ thống: công suất sạc, thay đổi chế độ chuông và các trạng thái khác.
+- Thông báo: heads-up alert có thể mở rộng và trả lời mà không cần mở ứng dụng nguồn.
+- Trạng thái rảnh: đảo thu về vùng camera và không chiếm màn hình.
+- Tùy chỉnh: vị trí, kích thước, độ nảy, phông chữ và thứ tự lớp giao diện.
+- Droidbar: thanh cạnh màn hình với đèn pin, chuông/rung, Wi-Fi, dữ liệu di động, chụp màn hình và ứng dụng ghim.
 
-Khi kết nối, Ayane:
-- Lưu trạng thái khóa thiết bị.
-- Yêu cầu làm mới MediaSession khi ứng dụng/cửa sổ đổi.
-- Chuyển đảo chính, thẻ nổi và thanh công cụ sang `TYPE_ACCESSIBILITY_OVERLAY` với `FLAG_LAYOUT_NO_LIMITS` và chế độ camera cutout.
-- Khi dịch vụ ngắt kết nối, tháo cửa sổ cũ và dựng lại bằng `TYPE_APPLICATION_OVERLAY`.
+Trong Ayane 2.7, phần được sửa trực tiếp theo hành vi heads-up là: **thông báo mới chỉ hiển thị tạm thời trong chính đảo động, có thể tự mở rộng, sau đó tự thu gọn**. Không còn tạo danh sách thẻ tin nhắn ghim liên tục trên màn hình. Thông báo gốc vẫn ở khay thông báo Android. Các sự kiện cuộc gọi/báo thức và trình phát media vẫn có luồng riêng.
 
-Trợ năng không thay thế `SYSTEM_ALERT_WINDOW`: quyền overlay vẫn là quyền cơ bản cho cửa sổ nổi và thao tác kéo; Trợ năng mở rộng kiểu cửa sổ và khả năng nhận sự kiện hệ thống. Ayane không đọc cây giao diện, văn bản hoặc trường nhập của ứng dụng khác, không chép mã Kotlin/Compose hoặc thư viện Shizuku của Droidtools.
+Ayane không chép mã Kotlin/Jetpack Compose của Droidtools. Ayane giữ cấu trúc Java/Android SDK hiện có và chỉ tham khảo hành vi/thiết kế được mô tả công khai.
+
+Các giới hạn Android vẫn áp dụng: trả lời nhanh cần RemoteInput; điều khiển nhạc cần MediaSession; nút thao tác cuộc gọi/báo thức cần PendingIntent tương ứng từ ứng dụng nguồn. Quyền Trợ năng không tự cấp quyền thay đổi mọi cài đặt hệ thống.

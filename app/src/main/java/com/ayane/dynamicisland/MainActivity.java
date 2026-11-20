@@ -125,7 +125,7 @@ public class MainActivity extends Activity {
         TextView title = text("Ayane", 29, Color.WHITE, true);
         brandLabels.addView(title, fullWidthTop(-2, 1));
         brandRow.addView(brandLabels, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView version = text("ULTIMATE 2.6", 9, 0xFFF0D9FF, true);
+        TextView version = text("ULTIMATE 2.7", 9, 0xFFF0D9FF, true);
         version.setPadding(dp(10), dp(7), dp(10), dp(7));
         version.setBackground(roundRect(0x332C1E3E, dp(30), 0x88C58CFF, dp(1)));
         brandRow.addView(version);
@@ -468,20 +468,15 @@ public class MainActivity extends Activity {
 
         page.addView(appCard, fullWidthTop(-2, 8));
 
-        addSectionTitle(page, "05", "Thông báo & thao tác nhanh", "Thông báo nổi riêng, nhạc riêng và thao tác trực tiếp trên màn hình.");
+        addSectionTitle(page, "05", "Thông báo & thao tác nhanh", "Thông báo bật ra quanh camera, tự thu gọn; nhạc và hoạt động hệ thống hiển thị riêng.");
         LinearLayout features = card();
         notificationAnchor = features;
         features.setOrientation(LinearLayout.VERTICAL);
         features.setPadding(dp(14), dp(6), dp(14), dp(6));
-        addSwitch(features, "Thông báo mới", "Nhận thông báo được phép trong bộ lọc ứng dụng", "show_notifications", true);
+        addSwitch(features, "Thông báo bật ra kiểu Droidbubble", "Khi có tin mới, đảo động tự bật lên quanh camera rồi tự thu gọn; không ghim danh sách thẻ trên màn hình", "floating_notifications", true);
         addDivider(features);
-        addSwitch(features, "Thẻ thông báo nổi riêng", "Mỗi thông báo có một thẻ độc lập, không xếp đè; kéo phần đầu thẻ để di chuyển", "floating_notifications", true);
-        addDivider(features);
-        addSwitch(features, "Nút Xóa tất cả", "Hiện nút gọn trong thanh quản lý phía trên các thẻ", "floating_clear_button", true);
-        addDivider(features);
-        addSlider(features, "Số thẻ nổi hiển thị cùng lúc", "floating_max_cards", 1, 5, 4, " thẻ");
-        addSlider(features, "Vị trí ngang nhóm thông báo", "floating_x", 0, 420, 12, " dp");
-        addSlider(features, "Vị trí dọc nhóm thông báo", "floating_y", 24, 900, 96, " dp");
+        addSwitch(features, "Tự mở rộng khi có tin nhắn", "Tự mở bảng xem trước để đọc nội dung và trả lời nhanh; chạm đảo để giữ hoặc thu gọn thủ công", "auto_expand_notifications", true);
+        addSlider(features, "Thời lượng xem trước thông báo", "notification_preview_duration_sec", 3, 12, 5, " giây");
         addDivider(features);
         addSwitch(features, "Nút trả lời nhanh", "Chỉ xuất hiện khi thông báo nguồn hỗ trợ trả lời", "show_reply_actions", true);
         addDivider(features);
@@ -499,7 +494,7 @@ public class MainActivity extends Activity {
         addSlider(features, "Vị trí ngang thẻ nhạc", "media_floating_x", 0, 420, 12, " dp");
         addSlider(features, "Vị trí dọc thẻ nhạc", "media_floating_y", 24, 900, 650, " dp");
         addDivider(features);
-        addSwitch(features, "Tự tránh chồng lấp", "Tự tìm vị trí trống cho thẻ nhạc khi gần thẻ thông báo", "auto_avoid_overlap", true);
+        addSwitch(features, "Tự tránh chồng lấp", "Tự tìm vị trí trống cho trình phát khi gần thẻ cuộc gọi hoặc hẹn giờ", "auto_avoid_overlap", true);
         addDivider(features);
         addSwitch(features, "Trình phát nhạc / video mở rộng", "Hiển thị ảnh bìa, tên nội dung, nút điều khiển và thanh tiến trình khi ứng dụng phát cung cấp thông tin đa phương tiện", "expanded_media_card_enabled", true);
         addDivider(features);

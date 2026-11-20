@@ -122,125 +122,13 @@ public final class FloatingOverlayManager {
     }
 
     private void syncNotifications() {
-        boolean enabled = prefs.getBoolean("floating_notifications", true)
-                && prefs.getBoolean("show_notifications", true);
-        List<IslandNotificationListener.NotificationItem> snapshot = enabled
-                ? IslandNotificationListener.getNotificationsSnapshot()
-                : new ArrayList<IslandNotificationListener.NotificationItem>();
+        // Hành vi mới: thông báo tin nhắn không còn tạo danh sách thẻ ghim trên màn hình.
+        // IslandService chỉ bật đảo động trong thời gian heads-up; sau đó tự thu gọn về camera.
+        // Cuộc gọi và báo thức vẫn có thẻ hoạt động riêng vì chúng cần tồn tại đến khi kết thúc.
+        List<IslandNotificationListener.NotificationItem> snapshot =
+                IslandNotificationListener.getNotificationsSnapshot();
         syncSpecialActivities(snapshot);
-        ArrayList<IslandNotificationListener.NotificationItem> all = new ArrayList<>();
-        for (IslandNotificationListener.NotificationItem item : snapshot) {
-            if (!item.incomingCall && !item.ongoingCall && !item.timerOrAlarm) all.add(item);
-        }
-
-        int requested = Math.max(1, Math.min(MAX_VISIBLE_NOTIFICATIONS,
-                prefs.getInt("floating_max_cards", 4)));
-        int headerY = dp(prefs.getInt("floating_y", 96));
-        boolean mediaWillShow = prefs.getBoolean("floating_media_card", true)
-                && prefs.getBoolean("show_media", true)
-                && !TextUtils.isEmpty(IslandNotificationListener.getMediaTitle());
-        int mediaReserve = mediaWillShow ? dp(84) : 0;
-        int availableBelow = screenHeight() - headerY - dp(50 + 24) - mediaReserve;
-        int availableAbove = headerY - dp(24 + 10);
-        stackAboveHeader = availableBelow < dp(NOTIFICATION_CARD_HEIGHT_DP + NOTIFICATION_GAP_DP);
-        int available = Math.max(availableBelow, availableAbove);
-        int fitOnScreen = Math.max(1, available / dp(NOTIFICATION_CARD_HEIGHT_DP + NOTIFICATION_GAP_DP));
-        pageSize = Math.min(requested, fitOnScreen);
-        String newest = all.isEmpty() ? "" : all.get(0).key;
-        if (!newest.equals(lastNewestKey)) {
-            lastNewestKey = newest;
-            pageOffset = 0;
-        }
-        int maxOffset = all.isEmpty() ? 0 : ((all.size() - 1) / pageSize) * pageSize;
-        if (pageOffset > maxOffset) pageOffset = maxOffset;
-        int count = Math.min(pageSize, Math.max(0, all.size() - pageOffset));
-        StringBuilder signature = new StringBuilder(enabled ? "1" : "0");
-        signature.append("|offset=").append(pageOffset).append("|size=").append(pageSize);
-        for (int i = pageOffset; i < pageOffset + count; i++) {
-            IslandNotificationListener.NotificationItem item = all.get(i);
-            signature.append('|').append(item.key).append(':').append(item.title)
-                    .append(':').append(item.text).append(':').append(item.senderName)
-                    .append(':').append(item.canReply());
-        }
-        signature.append("|total=").append(all.size())
-                .append("|clear=").append(prefs.getBoolean("floating_clear_button", true))
-                .append("|reply=").append(prefs.getBoolean("show_reply_actions", true))
-                .append("|dismiss=").append(prefs.getBoolean("show_dismiss_action", true))
-                .append("|sender=").append(prefs.getBoolean("show_sender_name", true))
-                .append(':').append(prefs.getBoolean("show_sender_avatar", true))
-                .append(':').append(prefs.getBoolean("show_source_icon", true))
-                .append(':').append(prefs.getString("custom_app_name", ""))
-                .append("|colors=").append(prefs.getInt("panel_bg_color", 0xF0181C27))
-                .append(':').append(prefs.getInt("border_color", 0xFFD6A3FF))
-                .append(':').append(prefs.getInt("text_color", Color.WHITE))
-                .append(':').append(prefs.getInt("notification_color", Color.WHITE))
-                .append(':').append(prefs.getInt("reply_color", 0xFFD6A3FF))
-                .append(':').append(prefs.getInt("secondary_text_color", 0xFFAAAEBB))
-                .append(':').append(prefs.getInt("avatar_bg_color", 0xFF252A36))
-                .append(':').append(prefs.getInt("accent_color", 0xFFD6A3FF))
-                .append("|style=").append(prefs.getInt("floating_max_cards", 4))
-                .append(':').append(prefs.getInt("floating_x", 12))
-                .append(':').append(prefs.getInt("floating_y", 96));
-        String sig = signature.toString();
-        if (sig.equals(lastNotificationSignature)) {
-            updateHeaderCount(all.size());
-            return;
-        }
-        lastNotificationSignature = sig;
-
-        if (count == 0) {
-            removeNotificationOverlays();
-            lastNotificationSignature = sig;
-            return;
-        }
-
-        ensureHeader();
-        if (headerParams != null && headerRoot != null) {
-            headerParams.x = clamp(dp(prefs.getInt("floating_x", 12)), 0, screenWidth() - headerParams.width);
-            headerParams.y = clamp(dp(prefs.getInt("floating_y", 96)), dp(24), screenHeight() - dp(48));
-            try { windowManager.updateViewLayout(headerRoot, headerParams); } catch (RuntimeException ignored) { }
-        }
-        updateHeaderCount(all.size());
-        if (headerRoot != null) {
-            headerRoot.setBackground(surface(prefs.getInt("panel_bg_color", 0xF0181C27), dp(22),
-                    prefs.getInt("border_color", prefs.getInt("accent_color", 0xFFD6A3FF)), dp(1)));
-        }
-        if (clearAllButton != null) clearAllButton.setBackground(surface(0x33FF7187, dp(16), 0x66FF7187, dp(1)));
-
-        ArrayList<String> wanted = new ArrayList<>();
-        for (int i = pageOffset; i < pageOffset + count; i++) {
-            IslandNotificationListener.NotificationItem item = all.get(i);
-            wanted.add(item.key);
-            NotificationCard card = cards.get(item.key);
-            if (card == null) {
-                card = new NotificationCard(item, i - pageOffset);
-                cards.put(item.key, card);
-                card.attach();
-                if (!resolveCollision(card)) {
-                    card.detach();
-                    cards.remove(item.key);
-                }
-            } else {
-                card.bind(item);
-                if (!card.userMoved) card.placeAtIndex(i - pageOffset);
-            }
-        }
-
-        ArrayList<String> remove = new ArrayList<>();
-        for (String key : cards.keySet()) if (!wanted.contains(key)) remove.add(key);
-        for (String key : remove) {
-            NotificationCard card = cards.remove(key);
-            if (card != null) card.detach();
-        }
-        ArrayList<String> collisionKeys = new ArrayList<>();
-        for (Map.Entry<String, NotificationCard> entry : cards.entrySet()) {
-            if (!resolveCollision(entry.getValue())) collisionKeys.add(entry.getKey());
-        }
-        for (String key : collisionKeys) {
-            NotificationCard card = cards.remove(key);
-            if (card != null) card.detach();
-        }
-        updateMediaAvoidingCards();
+        if (!cards.isEmpty() || headerRoot != null) removeNotificationOverlays();
     }
 
     private void ensureHeader() {

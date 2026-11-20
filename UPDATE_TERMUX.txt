@@ -1,29 +1,32 @@
-AYANE DYNAMIC ISLAND 2.6.0 - CẬP NHẬT BẰNG TERMUX
+AYANE DYNAMIC ISLAND ULTIMATE 2.7.0 — CẬP NHẬT BẰNG TERMUX
 
-1) Tải Ayane_Dynamic_Island_v2.6_Source.zip vào thư mục Download.
-2) Mở Termux và chạy:
+1) Tải Ayane_Dynamic_Island_v2.7_Source.zip vào Download.
+2) Mở Termux và vào repository hiện có:
+   cd ~/DaoDong-Android-v3
+3) Kiểm tra thay đổi cục bộ trước khi đồng bộ:
+   git status --short
+   Nếu còn thay đổi bạn muốn giữ, hãy commit chúng trước. Không dùng git reset --hard.
+4) Lấy commit mới nhất từ GitHub:
+   git fetch origin
+   git pull --rebase origin main
+5) Giải nén bản v2.7 đè lên project hiện tại:
+   unzip -o ~/storage/downloads/Ayane_Dynamic_Island_v2.7_Source.zip -d "$PWD"
+6) Kiểm tra và đẩy bản cập nhật:
+   git status --short
+   git add -A
+   git commit -m "Upgrade Ayane heads-up notifications 2.7"
+   git push origin main
+7) Vào GitHub > Actions. Chờ workflow "Tạo APK Ayane Dynamic Island 2.7 · Heads-up" chạy thành công.
+8) Tải Artifact "Ayane-Dynamic-Island-APK-v2.7", giải nén và cài app-debug.apk.
 
-cd ~/storage/downloads
-git clone https://github.com/isekaiiiii/DaoDong-Android.git Ayane-Dynamic-Island-v26
-cd Ayane-Dynamic-Island-v26
-git config --global --add safe.directory "$PWD"
-unzip -o ~/storage/downloads/Ayane_Dynamic_Island_v2.6_Source.zip -d "$PWD"
-git status --short
-git add -A
-git commit -m "Upgrade Ayane Dynamic Island 2.6"
-git push origin main
+HÀNH VI THÔNG BÁO MỚI
+- Khi tin nhắn mới đến, đảo động tự bật ra quanh camera; có thể tự mở rộng để hiện nội dung và trả lời nhanh.
+- Mặc định tự thu gọn sau 5 giây; có thể chỉnh 3–12 giây trong ứng dụng.
+- Không ghim danh sách thẻ thông báo cố định trên màn hình.
+- Thông báo gốc vẫn nằm trong khay thông báo Android; hết thời gian xem trước không tự xóa thông báo.
+- Chạm để mở rộng thủ công hoặc bắt đầu trả lời sẽ hủy tự thu gọn trong lúc tương tác.
 
-3) Nếu git hỏi Username, nhập isekaiiiii. Nếu hỏi Password, dán GitHub Personal Access Token (không dùng mật khẩu tài khoản).
-4) Mở https://github.com/isekaiiiii/DaoDong-Android/actions
-5) Chờ workflow "Tạo APK Ayane Dynamic Island 2.6 · Droidtools-like" có dấu tích xanh.
-6) Tải Artifact "Ayane-Dynamic-Island-APK-v2.6", giải nén và cài app-debug.apk.
-
-Quyền sau khi cài:
-- Hiển thị trên ứng dụng khác: bắt buộc để vẽ, chạm và kéo đảo nổi.
-- Truy cập thông báo: để nhận thông báo, MediaSession và RemoteInput khi ứng dụng nguồn hỗ trợ.
-- Trợ năng Ayane: tùy chọn nâng cao; dùng TYPE_ACCESSIBILITY_OVERLAY để mở rộng vùng camera/thanh trạng thái và nhận sự kiện đổi ứng dụng. Dịch vụ không đọc cây giao diện hoặc văn bản. Chức năng chụp màn hình chỉ chạy khi bạn tự bấm nút trong Droidbar.
-- Android 13+: cho phép thông báo dịch vụ Ayane.
-- Camera: chỉ dùng cho đèn pin trong Droidbar.
-- Có thể chọn Không hạn chế tối ưu pin để giảm khả năng dịch vụ bị hệ thống dừng; không thể đảm bảo chạy tuyệt đối 24/7.
-
-Lưu ý: nếu git commit báo nothing to commit, hãy kiểm tra git status --short và đảm bảo đã giải nén ZIP đúng vào thư mục repository. APK cần build thành công trên GitHub Actions trước khi cài.
+LƯU Ý
+- Trả lời nhanh cần ứng dụng nguồn hỗ trợ RemoteInput.
+- Tên/ảnh đại diện người gửi phụ thuộc dữ liệu do ứng dụng nguồn cung cấp.
+- Chưa thể xác nhận build thực tế cho đến khi GitHub Actions chạy xong.

@@ -45,6 +45,10 @@ public class IslandNotificationListener extends NotificationListenerService {
 
     private static volatile IslandNotificationListener instance;
     private static volatile String selectedKey = "";
+    // Chỉ giữ thông báo mới trong thời gian ngắn để tạo hiệu ứng heads-up như Droidbubble.
+    // Danh sách thông báo hệ thống vẫn được lưu trong ITEMS và không bị tự động xóa.
+    private static volatile String headsUpKey = "";
+    private static volatile long headsUpExpiresAt = 0L;
     private static volatile String mediaTitle = "";
     private static volatile String mediaArtist = "";
     private static volatile String mediaPackage = "";
@@ -151,8 +155,24 @@ public class IslandNotificationListener extends NotificationListenerService {
     public void onNotificationPosted(StatusBarNotification sbn) {
         if (sbn == null || getPackageName().equals(sbn.getPackageName())) return;
         putNotification(sbn);
+        activateHeadsUp(sbn.getKey());
         refreshMedia();
         notifyIsland();
+    }
+
+    private void activateHeadsUp(String key) {
+        if (key == null || key.isEmpty()) return;
+        NotificationItem item;
+        synchronized (LOCK) { item = ITEMS.get(key); }
+        if (item == null || item.incomingCall || item.ongoingCall || item.timerOrAlarm) return;
+        SharedPreferences prefs = getSharedPreferences("island_settings", MODE_PRIVATE);
+        int seconds = Math.max(3, Math.min(12,
+                prefs.getInt("notification_preview_duration_sec", 5)));
+        synchronized (LOCK) {
+            if (!ITEMS.containsKey(key)) return;
+            headsUpKey = key;
+            headsUpExpiresAt = System.currentTimeMillis() + seconds * 1000L;
+        }
     }
 
     @Override
@@ -161,6 +181,10 @@ public class IslandNotificationListener extends NotificationListenerService {
             synchronized (LOCK) {
                 ITEMS.remove(sbn.getKey());
                 if (sbn.getKey().equals(selectedKey)) selectedKey = newestKeyLocked();
+                if (sbn.getKey().equals(headsUpKey)) {
+                    headsUpKey = "";
+                    headsUpExpiresAt = 0L;
+                }
             }
         }
         refreshMedia();
@@ -182,6 +206,10 @@ public class IslandNotificationListener extends NotificationListenerService {
             synchronized (LOCK) {
                 ITEMS.remove(sbn.getKey());
                 if (sbn.getKey().equals(selectedKey)) selectedKey = newestKeyLocked();
+                if (sbn.getKey().equals(headsUpKey)) {
+                    headsUpKey = "";
+                    headsUpExpiresAt = 0L;
+                }
             }
             return;
         }
@@ -403,6 +431,10 @@ public class IslandNotificationListener extends NotificationListenerService {
             }
             for (String key : remove) ITEMS.remove(key);
             if (!ITEMS.containsKey(selectedKey)) selectedKey = newestKeyLocked();
+            if (!ITEMS.containsKey(headsUpKey)) {
+                headsUpKey = "";
+                headsUpExpiresAt = 0L;
+            }
         }
         notifyIslandStatic();
     }
@@ -413,6 +445,37 @@ public class IslandNotificationListener extends NotificationListenerService {
             Collections.reverse(result);
             return result;
         }
+    }
+
+    /** Trả về thông báo mới nhất trong cửa sổ heads-up; hết thời gian sẽ tự ẩn. */
+    public static NotificationItem getHeadsUpNotification() {
+        synchronized (LOCK) {
+            if (headsUpKey.isEmpty() || System.currentTimeMillis() >= headsUpExpiresAt) {
+                headsUpKey = "";
+                headsUpExpiresAt = 0L;
+                return null;
+            }
+            return ITEMS.get(headsUpKey);
+        }
+    }
+
+    public static long getHeadsUpRemainingMillis() {
+        synchronized (LOCK) {
+            return headsUpKey.isEmpty() ? 0L
+                    : Math.max(0L, headsUpExpiresAt - System.currentTimeMillis());
+        }
+    }
+
+    public static void clearHeadsUpNotification(String key) {
+        boolean changed = false;
+        synchronized (LOCK) {
+            if (!headsUpKey.isEmpty() && (key == null || key.isEmpty() || headsUpKey.equals(key))) {
+                headsUpKey = "";
+                headsUpExpiresAt = 0L;
+                changed = true;
+            }
+        }
+        if (changed) notifyIslandStatic();
     }
 
     public static NotificationItem getSelectedNotification() {
@@ -551,6 +614,10 @@ public class IslandNotificationListener extends NotificationListenerService {
             synchronized (LOCK) {
                 ITEMS.remove(key);
                 if (key.equals(selectedKey)) selectedKey = newestKeyLocked();
+                if (key.equals(headsUpKey)) {
+                    headsUpKey = "";
+                    headsUpExpiresAt = 0L;
+                }
             }
             notifyIslandStatic();
             return true;
@@ -570,6 +637,8 @@ public class IslandNotificationListener extends NotificationListenerService {
             synchronized (LOCK) {
                 for (String key : keys) ITEMS.remove(key);
                 if (keysContains(keys, selectedKey)) selectedKey = newestKeyLocked();
+                headsUpKey = "";
+                headsUpExpiresAt = 0L;
             }
             notifyIslandStatic();
             return true;
