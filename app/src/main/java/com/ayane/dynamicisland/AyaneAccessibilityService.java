@@ -141,7 +141,7 @@ public final class AyaneAccessibilityService extends AccessibilityService {
 
     public static boolean toggleSplitScreen() {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
-                && performGlobalAction(&& performGlobalAction( invokeGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN);
+                && invokeGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN);
     }
 
     /** Chỉ được gọi khi người dùng chủ động chạm nút Chụp màn hình trong thanh công cụ. */
