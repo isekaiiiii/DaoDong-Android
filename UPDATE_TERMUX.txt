@@ -1,0 +1,28 @@
+AYANE ULTIMATE 2.2 — CẬP NHẬT BẰNG TERMUX
+
+Cách an toàn: dùng một thư mục clone mới, giữ nguyên thư mục/repository cũ.
+
+1) Tải Ayane_Ultimate_v2.2_Source.zip vào thư mục Download.
+2) Mở Termux và chạy từng lệnh:
+
+cd ~/storage/downloads
+git clone https://github.com/isekaiiiii/DaoDong-Android.git Ayane-Ultimate-v22
+cd Ayane-Ultimate-v22
+git config --global --add safe.directory "$PWD"
+rm -rf app .github
+rm -f build.gradle settings.gradle gradle.properties README.md UPDATE_TERMUX.txt .gitignore
+unzip -o ~/storage/downloads/Ayane_Ultimate_v2.2_Source.zip
+
+git add -A
+git commit -m "Upgrade Ayane Ultimate 2.2"
+git push origin main
+
+3) Mở GitHub → Actions → Build Ayane Ultimate APK v2.2.
+4) Khi run có dấu tick xanh, tải artifact: Ayane-Ultimate-APK-v2.2.
+5) Giải nén artifact ZIP để lấy app-debug.apk.
+
+LƯU Ý:
+- Nếu Git báo dubious ownership, chạy: git config --global --add safe.directory "$PWD"
+- Nếu GitHub hỏi Username: nhập username GitHub. Password: nhập Personal Access Token (PAT), không phải mật khẩu tài khoản. Không gửi PAT cho người khác.
+- Nếu commit báo nothing to commit, kiểm tra ZIP đã giải nén ở đúng thư mục gốc chưa.
+- Đây là mã nguồn; APK chỉ có sau khi GitHub Actions build thành công.
