@@ -111,7 +111,7 @@ public final class AyaneAccessibilityService extends AccessibilityService {
         return false;
     }
 
-    private static boolean performGlobalAction(int action) {
+    private static boolean invokeGlobalAction(int action) {
         AyaneAccessibilityService service = instance;
         if (service == null) return false;
         try {
@@ -122,11 +122,11 @@ public final class AyaneAccessibilityService extends AccessibilityService {
     }
 
     public static boolean openNotificationShade() {
-        return performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS);
+        return invokeGlobalAction(GLOBAL_ACTION_NOTIFICATIONS);
     }
 
     public static boolean openQuickSettings() {
-        return performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS);
+        return invokeGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS);
     }
 
     public static void openQuickSettings(Context context) {
@@ -136,12 +136,12 @@ public final class AyaneAccessibilityService extends AccessibilityService {
     }
 
     public static boolean openRecentApps() {
-        return performGlobalAction(GLOBAL_ACTION_RECENTS);
+        return invokeGlobalAction(GLOBAL_ACTION_RECENTS);
     }
 
     public static boolean toggleSplitScreen() {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
-                && performGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN);
+                && performGlobalAction(&& performGlobalAction( invokeGlobalAction(GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN);
     }
 
     /** Chỉ được gọi khi người dùng chủ động chạm nút Chụp màn hình trong thanh công cụ. */
