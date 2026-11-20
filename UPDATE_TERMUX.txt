@@ -1,19 +1,11 @@
-CAP NHAT DAO DONG ULTRA V3.0 BANG TERMUX
+CẬP NHẬT ĐẢO ĐỘNG ULTRA v3.1
 
-1) Tai DaoDong_Android_v3.0_source.zip vao Download.
-2) Mo Termux va chay:
+1. Giải nén ZIP này vào thư mục dự án Git đã clone.
+2. Chạy:
+   git add -A
+   git commit -m "Upgrade Dao Dong Ultra v3.1"
+   git push origin main
+3. Mở GitHub Actions và đợi workflow “Tạo APK Đảo động v3.1” chạy xong.
+4. Tải Artifact “Dao-dong-Android-APK-v3.1”, giải nén và cài app-debug.apk.
 
-cd ~/storage/downloads/DynamicIslandAndroid
-unzip -o ~/storage/downloads/DaoDong_Android_v3.0_source.zip -d .
-
-git add -A
-git commit -m "Upgrade Dao Dong Ultra v3.0"
-git push origin main
-
-3) Mo repository GitHub > Actions.
-4) Mo lan chay workflow moi nhat: "Tao APK Dao dong v3.0".
-5) Khi thanh cong, tai artifact Dao-dong-Android-APK-v3.
-6) Giai nen artifact ZIP va cai app-debug.apk.
-
-Luu y: ZIP nay co cac thu muc .github, app va file Gradle o ngay cap goc.
-Neu git bao nothing to commit thi kiem tra git status; co the cac file khong thay doi.
+Ghi chú quyền: không cần Trợ năng/TalkBack. Cần Hiển thị trên ứng dụng khác để tạo lớp nổi và Truy cập thông báo để hiển thị/thao tác thông báo. Trả lời nhanh chỉ hoạt động với thông báo có RemoteInput. Nút Xóa tất cả chỉ xóa các thông báo do Đảo động theo dõi.

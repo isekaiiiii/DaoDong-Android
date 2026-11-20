@@ -78,7 +78,7 @@ public class MainActivity extends Activity {
         LinearLayout titleRow = row();
         TextView title = text("Đảo động", 32, Color.WHITE, true);
         titleRow.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView version = text("V3.0 ULTRA", 10, 0xFFD9CEFF, true);
+        TextView version = text("V3.1 ULTRA", 10, 0xFFD9CEFF, true);
         version.setPadding(dp(11), dp(7), dp(11), dp(7));
         version.setBackground(roundRect(0x332A2540, dp(30), 0x775A4C7E, dp(1)));
         titleRow.addView(version);
@@ -132,6 +132,9 @@ public class MainActivity extends Activity {
         addPermissionRow(permissions, "Danh sách ứng dụng đã cài", "Dùng để lấy tên và biểu tượng ứng dụng gửi thông báo", 3);
         addDivider(permissions);
         addPermissionRow(permissions, "Quyền nhận diện ứng dụng đang chơi", "Dùng để ẩn đảo động khi mở game", 4);
+        TextView accessibilityNote = text("Không cần bật Trợ năng/TalkBack. Để nhận nội dung và trả lời nhanh, hãy cấp đúng quyền Truy cập thông báo ở mục phía trên. Android chỉ cho trả lời khi ứng dụng gửi thông báo có hỗ trợ thao tác trả lời.", 10, 0xFFB8BBC8, false);
+        accessibilityNote.setLineSpacing(dp(2), 1f);
+        permissions.addView(accessibilityNote, fullWidthTop(-2, 9));
         permissionStatus = text("Đang kiểm tra quyền…", 11, GOLD, false);
         permissions.addView(permissionStatus, fullWidthTop(-2, 10));
         Button battery = smallButton("MỞ CÀI ĐẶT PIN / CHẠY NỀN");
@@ -139,16 +142,16 @@ public class MainActivity extends Activity {
         permissions.addView(battery, fullWidthTop(44, 10));
         page.addView(permissions, fullWidthTop(-2, 8));
 
-        addSectionTitle(page, "02", "Kích thước & vị trí", "Chiều cao đảo thu gọn và chiều cao bảng mở rộng có thể chỉnh riêng.");
+        addSectionTitle(page, "02", "Kích thước & vị trí", "Chiều rộng/cao khi mở được chỉnh riêng; vị trí dọc có dải âm lớn hơn để đưa đảo lên cao.");
         LinearLayout dimensions = card();
         dimensions.setOrientation(LinearLayout.VERTICAL);
         dimensions.setPadding(dp(15), dp(12), dp(15), dp(14));
         addSlider(dimensions, "Chiều rộng đảo thu gọn", "width", 140, 400, 235, " dp");
         addSlider(dimensions, "Chiều cao đảo thu gọn", "height", 38, 180, 62, " dp");
-        addSlider(dimensions, "Chiều rộng khi mở rộng", "expanded_width", 180, 480, 330, " dp");
-        addSlider(dimensions, "Chiều cao khi mở rộng", "expanded_height", 130, 700, 300, " dp");
+        addSlider(dimensions, "Chiều rộng khi mở rộng", "expanded_width", 180, 620, 390, " dp");
+        addSlider(dimensions, "Chiều cao khi mở rộng", "expanded_height", 130, 900, 300, " dp");
         addSlider(dimensions, "Vị trí ngang · trái (−) / phải (+)", "x", -360, 360, 0, " dp");
-        addSlider(dimensions, "Vị trí dọc · lên (−) / xuống (+)", "y", -240, 900, 12, " dp");
+        addSlider(dimensions, "Vị trí dọc · lên (−) / xuống (+)", "y", -900, 900, 12, " dp");
         addSlider(dimensions, "Độ bo góc", "corner_radius", 12, 88, 38, " dp");
         addSlider(dimensions, "Độ dày viền", "border_width", 0, 5, 1, " dp");
         Button center = outlineButton("CĂN GIỮA ĐẢO ĐỘNG");
@@ -293,7 +296,7 @@ public class MainActivity extends Activity {
         addDivider(features);
         addSwitch(features, "Hiển thị nút nghe / từ chối cuộc gọi", "Chỉ dùng nếu ứng dụng gọi cung cấp thao tác trong thông báo", "show_calls", true);
         addDivider(features);
-        addSwitch(features, "Ưu tiên ảnh đại diện người nhắn", "Nếu không có ảnh người gửi sẽ dùng icon ứng dụng", "prefer_sender_avatar", true);
+        addSwitch(features, "Hiển thị ảnh đại diện người nhắn", "Hiện avatar riêng cạnh icon ứng dụng nếu thông báo có cung cấp", "prefer_sender_avatar", true);
         addDivider(features);
         addSwitch(features, "Tự chuyển thông báo", "Tự luân phiên giữa các ứng dụng; có thể vuốt trái/phải", "auto_cycle_notifications", true);
         addDivider(features);

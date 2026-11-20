@@ -75,6 +75,11 @@ public class IslandService extends Service {
     private Button declineCallButton;
     private ImageView mediaArtworkView;
     private ImageView appIconView;
+    private LinearLayout notificationIdentityRow;
+    private ImageView notificationAppIconView;
+    private ImageView senderAvatarView;
+    private TextView notificationIdentityText;
+    private Button clearAllButton;
     private EditText replyInput;
     private Button replyButton;
     private Button dismissButton;
@@ -233,9 +238,33 @@ public class IslandService extends Service {
         expandedPanel.setPadding(dp(8), dp(10), dp(8), dp(5));
         detailsText = makeText("", 12, Color.WHITE, false);
         detailsText.setGravity(Gravity.CENTER_VERTICAL);
-        detailsText.setMaxLines(5);
+        detailsText.setMaxLines(10);
+        detailsText.setEllipsize(android.text.TextUtils.TruncateAt.END);
         detailsText.setLineSpacing(dp(2), 1f);
         detailsText.setPadding(dp(10), dp(8), dp(10), dp(8));
+
+        notificationIdentityRow = new LinearLayout(this);
+        notificationIdentityRow.setOrientation(LinearLayout.HORIZONTAL);
+        notificationIdentityRow.setGravity(Gravity.CENTER_VERTICAL);
+        notificationIdentityRow.setPadding(dp(4), dp(3), dp(4), dp(7));
+        notificationAppIconView = new ImageView(this);
+        notificationAppIconView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        notificationAppIconView.setBackground(makeRoundDrawable(0xFF252938, dp(9), 0, 0));
+        notificationAppIconView.setClipToOutline(true);
+        notificationIdentityRow.addView(notificationAppIconView, new LinearLayout.LayoutParams(dp(30), dp(30)));
+        senderAvatarView = new ImageView(this);
+        senderAvatarView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        senderAvatarView.setBackground(makeRoundDrawable(0xFF343044, dp(16), 0, 0));
+        senderAvatarView.setClipToOutline(true);
+        LinearLayout.LayoutParams avatarLp = new LinearLayout.LayoutParams(dp(30), dp(30));
+        avatarLp.setMargins(dp(7), 0, dp(8), 0);
+        notificationIdentityRow.addView(senderAvatarView, avatarLp);
+        notificationIdentityText = makeText("", 11, 0xFFE9E7F2, true);
+        notificationIdentityText.setMaxLines(2);
+        notificationIdentityText.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        notificationIdentityRow.addView(notificationIdentityText, new LinearLayout.LayoutParams(0, -2, 1));
+        notificationIdentityRow.setVisibility(View.GONE);
+        expandedPanel.addView(notificationIdentityRow, new LinearLayout.LayoutParams(-1, -2));
         expandedPanel.addView(detailsText, new LinearLayout.LayoutParams(-1, -2));
 
         batteryAlertText = makeText("", 12, Color.WHITE, true);
@@ -319,6 +348,15 @@ public class IslandService extends Service {
         });
         notificationActions.addView(dismissButton, new LinearLayout.LayoutParams(-2, dp(42)));
         expandedPanel.addView(notificationActions, new LinearLayout.LayoutParams(-1, -2));
+
+        clearAllButton = actionButton("Xóa tất cả tin nhắn / thông báo", 0xFF492A38);
+        clearAllButton.setOnClickListener(v -> {
+            int removed = IslandNotificationListener.dismissAllTrackedNotifications();
+            replyInput.setText("");
+            toast(removed > 0 ? "Đã xóa " + removed + " thông báo đang hiển thị trên Đảo động" : "Không có thông báo để xóa");
+            updateContent();
+        });
+        expandedPanel.addView(clearAllButton, new LinearLayout.LayoutParams(-1, dp(38)));
 
         callActions = new LinearLayout(this);
         callActions.setOrientation(LinearLayout.VERTICAL);
@@ -415,7 +453,7 @@ public class IslandService extends Service {
                     int maxOffsetX = Math.max(0, (metrics.widthPixels - windowParams.width) / 2);
                     int maxOffsetY = Math.max(0, metrics.heightPixels - windowParams.height);
                     windowParams.x = Math.max(-maxOffsetX, Math.min(maxOffsetX, startWindowX + dx));
-                    windowParams.y = Math.max(-dp(240), Math.min(maxOffsetY, startWindowY + dy));
+                    windowParams.y = Math.max(-dp(900), Math.min(maxOffsetY, startWindowY + dy));
                     try { windowManager.updateViewLayout(islandRoot, windowParams); } catch (Exception ignored) { }
                 }
                 return true;
@@ -584,16 +622,10 @@ public class IslandService extends Service {
                 lastNotificationIconKey = currentIconKey;
             } else if (hasIconPackage && customIconUri.isEmpty() && !currentIconKey.equals(lastNotificationIconKey)) {
                 try {
-                    android.graphics.drawable.Icon senderIcon = IslandNotificationListener.getLatestSenderIcon();
-                    if (prefs.getBoolean("prefer_sender_avatar", true) && senderIcon != null) {
-                        appIconView.setImageIcon(senderIcon);
-                    } else {
-                        Drawable icon = getPackageManager().getApplicationIcon(notificationPackage);
-                        appIconView.setImageDrawable(icon);
-                    }
+                    Drawable icon = getPackageManager().getApplicationIcon(notificationPackage);
+                    appIconView.setImageDrawable(icon);
                 } catch (Exception e) {
-                    try { appIconView.setImageDrawable(getPackageManager().getApplicationIcon(notificationPackage)); }
-                    catch (Exception ignored) { appIconView.setImageResource(android.R.drawable.sym_def_app_icon); }
+                    appIconView.setImageResource(android.R.drawable.sym_def_app_icon);
                 }
                 lastIconPackage = notificationPackage;
                 lastCustomIconUri = "";
@@ -604,6 +636,31 @@ public class IslandService extends Service {
                 lastNotificationIconKey = "";
             }
             appIconView.setOnClickListener(v -> IslandNotificationListener.openLatest());
+        }
+
+        if (notificationIdentityRow != null) {
+            notificationIdentityRow.setVisibility(hasNotification ? View.VISIBLE : View.GONE);
+            if (hasNotification) {
+                notificationAppIconView.setVisibility(showAppIcon ? View.VISIBLE : View.GONE);
+                try {
+                    notificationAppIconView.setImageDrawable(getPackageManager().getApplicationIcon(notificationPackage));
+                } catch (Exception ignored) {
+                    notificationAppIconView.setImageResource(android.R.drawable.sym_def_app_icon);
+                }
+                android.graphics.drawable.Icon avatar = IslandNotificationListener.getLatestSenderIcon();
+                boolean showAvatar = prefs.getBoolean("prefer_sender_avatar", true);
+                senderAvatarView.setVisibility(showAvatar ? View.VISIBLE : View.GONE);
+                if (showAvatar && avatar != null) {
+                    try { senderAvatarView.setImageIcon(avatar); }
+                    catch (RuntimeException ignored) { senderAvatarView.setImageResource(android.R.drawable.ic_menu_myplaces); }
+                } else if (showAvatar) {
+                    senderAvatarView.setImageResource(android.R.drawable.ic_menu_myplaces);
+                }
+                String appLabel = customName.isEmpty() ? sourceAppName : customName;
+                String senderLabel = notificationSender == null || notificationSender.trim().isEmpty()
+                        ? "Người gửi không được cung cấp" : notificationSender;
+                notificationIdentityText.setText(trim(senderLabel + "\n" + appLabel, 90));
+            }
         }
 
         View mediaHeader = expandedPanel.findViewWithTag("media_header");
@@ -642,9 +699,7 @@ public class IslandService extends Service {
             appendLine(details, IslandNotificationListener.isMediaPlaying() ? "Đang phát nhạc" : "Đang tạm dừng");
         }
         if (hasNotification) {
-            String appPart = customName.isEmpty() ? (showAppName ? sourceAppName : "Thông báo") : customName;
-            appendLine(details, "✦  " + (appPart.isEmpty() ? "Thông báo" : appPart) + " · " + notification);
-            if (!notificationSender.isEmpty()) appendLine(details, "Người gửi: " + notificationSender);
+            appendLine(details, notification);
             if (!notificationText.isEmpty()) appendLine(details, notificationText);
             int count = IslandNotificationListener.getNotificationCount();
             if (count > 1) appendLine(details, "Thông báo " + (IslandNotificationListener.getSelectedNotificationIndex() + 1) + "/" + count + " · Vuốt trái/phải để chuyển");
@@ -701,6 +756,8 @@ public class IslandService extends Service {
         replyButton.setVisibility(hasReply ? View.VISIBLE : View.GONE);
         dismissButton.setVisibility(hasDismiss ? View.VISIBLE : View.GONE);
         notificationActions.setVisibility(hasReply || hasDismiss ? View.VISIBLE : View.GONE);
+        boolean hasTrackedNotifications = hasNotification && IslandNotificationListener.getNotificationCount() > 0;
+        if (clearAllButton != null) clearAllButton.setVisibility(hasTrackedNotifications ? View.VISIBLE : View.GONE);
         if (hasReply) {
             replyButton.setTextColor(Color.WHITE);
             replyButton.setBackground(makeRoundDrawable(accent, dp(10), 0, 0));

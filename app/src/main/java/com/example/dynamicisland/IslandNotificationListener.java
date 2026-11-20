@@ -358,6 +358,43 @@ public class IslandNotificationListener extends NotificationListenerService {
         }
     }
 
+    public static int dismissAllTrackedNotifications() {
+        IslandNotificationListener service = instance;
+        if (service == null) return 0;
+        ArrayList<String> keys = new ArrayList<>();
+        try {
+            StatusBarNotification[] active = service.getActiveNotifications();
+            if (active != null) {
+                for (StatusBarNotification sbn : active) {
+                    if (sbn == null || service.getPackageName().equals(sbn.getPackageName())) continue;
+                    NotificationItem item = service.makeItem(sbn);
+                    if (item != null && item.key != null && !item.key.isEmpty()) keys.add(item.key);
+                }
+            }
+        } catch (RuntimeException ignored) { }
+        if (keys.isEmpty()) {
+            synchronized (notificationItems) {
+                for (NotificationItem item : notificationItems) {
+                    if (item != null && item.key != null && !item.key.isEmpty()) keys.add(item.key);
+                }
+            }
+        }
+        int removed = 0;
+        for (String key : keys) {
+            try {
+                service.cancelNotification(key);
+                removed++;
+            } catch (RuntimeException ignored) { }
+        }
+        synchronized (notificationItems) {
+            notificationItems.clear();
+            selectedIndex = 0;
+            applySelectedItemLocked();
+        }
+        service.notifyIsland();
+        return removed;
+    }
+
     public static void openLatest() {
         PendingIntent intent = latestContentIntent;
         if (intent == null) return;
