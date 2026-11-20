@@ -1,4 +1,4 @@
-package com.example.dynamicisland;
+package com.ayane.dynamicisland;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;

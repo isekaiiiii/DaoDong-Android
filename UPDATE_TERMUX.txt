@@ -1,11 +1,25 @@
-CẬP NHẬT ĐẢO ĐỘNG ULTRA v3.1
+AYANE ULTIMATE 2.0 — CẬP NHẬT BẰNG TERMUX
 
-1. Giải nén ZIP này vào thư mục dự án Git đã clone.
-2. Chạy:
-   git add -A
-   git commit -m "Upgrade Dao Dong Ultra v3.1"
-   git push origin main
-3. Mở GitHub Actions và đợi workflow “Tạo APK Đảo động v3.1” chạy xong.
-4. Tải Artifact “Dao-dong-Android-APK-v3.1”, giải nén và cài app-debug.apk.
+1. Tải Ayane_Ultimate_v2_Source.zip vào Download.
+2. Mở Termux và chạy đúng nguyên khối lệnh bên dưới. Lệnh này clone repository vào thư mục mới, giữ repository cũ nguyên trạng.
 
-Ghi chú quyền: không cần Trợ năng/TalkBack. Cần Hiển thị trên ứng dụng khác để tạo lớp nổi và Truy cập thông báo để hiển thị/thao tác thông báo. Trả lời nhanh chỉ hoạt động với thông báo có RemoteInput. Nút Xóa tất cả chỉ xóa các thông báo do Đảo động theo dõi.
+cd ~/storage/downloads
+git clone https://github.com/isekaiiiii/DaoDong-Android.git Ayane-Ultimate
+cd Ayane-Ultimate
+git config --global --add safe.directory "$PWD"
+rm -rf app .github
+rm -f build.gradle settings.gradle gradle.properties README.md UPDATE_TERMUX.txt .gitignore
+unzip -o ~/storage/downloads/Ayane_Ultimate_v2_Source.zip
+git add -A
+git commit -m "Build Ayane Ultimate 2.0"
+git push origin main
+
+3. Mở GitHub > Actions > Build Ayane Ultimate APK.
+4. Khi run có dấu tick xanh, tải Artifact: Ayane-Ultimate-APK-v2.
+5. Giải nén Artifact ZIP để lấy app-debug.apk.
+
+LƯU Ý:
+- ZIP phải được đặt trong /storage/emulated/0/Download và tên đúng Ayane_Ultimate_v2_Source.zip.
+- Nếu Git yêu cầu trust thư mục, chạy git config --global --add safe.directory "$PWD".
+- Khi push HTTPS, Username là username GitHub; Password phải là Personal Access Token. Không chia sẻ token.
+- Đây là source project. APK chỉ có sau khi GitHub Actions build thành công.
